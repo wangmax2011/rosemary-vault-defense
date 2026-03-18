@@ -1,0 +1,1442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rosemary: Vault Defense</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+:root {
+  --neon-cyan: #00f0ff;
+  --neon-pink: #ff2d7b;
+  --neon-green: #39ff14;
+  --neon-orange: #ff6a00;
+  --neon-purple: #b44aff;
+  --bg-dark: #050a12;
+  --bg-panel: rgba(8,16,32,0.92);
+  --border-glow: rgba(0,240,255,0.3);
+}
+
+html, body { width:100%; height:100%; overflow:hidden; background:var(--bg-dark); font-family:'Share Tech Mono',monospace; color:#c8dce8; }
+
+#game-wrapper { width:100vw; height:100vh; position:relative; overflow:hidden; }
+
+/* TITLE SCREEN */
+#title-screen {
+  position:absolute; inset:0; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; z-index:100;
+  background: radial-gradient(ellipse at 50% 40%, rgba(0,240,255,0.06) 0%, transparent 60%),
+              linear-gradient(180deg, #050a12 0%, #0a1628 50%, #050a12 100%);
+}
+.title-glow {
+  font-family:'Orbitron',sans-serif; font-weight:900; font-size:clamp(3rem,8vw,7rem);
+  color:var(--neon-cyan); letter-spacing:0.3em;
+  text-shadow: 0 0 20px var(--neon-cyan), 0 0 60px rgba(0,240,255,0.4), 0 0 120px rgba(0,240,255,0.15);
+  animation: titlePulse 3s ease-in-out infinite;
+}
+.subtitle {
+  font-family:'Orbitron',sans-serif; font-weight:400; font-size:clamp(1rem,3vw,2rem);
+  color:var(--neon-pink); letter-spacing:0.6em; margin-top:0.5rem;
+  text-shadow: 0 0 15px var(--neon-pink), 0 0 40px rgba(255,45,123,0.3);
+}
+.title-desc { margin-top:2rem; font-size:0.9rem; color:#5a7a8a; letter-spacing:0.15em; }
+#start-btn {
+  margin-top:3rem; padding:1rem 3rem; background:transparent;
+  border:1px solid var(--neon-cyan); color:var(--neon-cyan);
+  font-family:'Orbitron',sans-serif; font-size:0.85rem; letter-spacing:0.2em;
+  cursor:pointer; transition:all 0.3s;
+  text-shadow:0 0 10px var(--neon-cyan);
+  box-shadow:0 0 15px rgba(0,240,255,0.15), inset 0 0 15px rgba(0,240,255,0.05);
+}
+#start-btn:hover {
+  background:rgba(0,240,255,0.1); box-shadow:0 0 30px rgba(0,240,255,0.3), inset 0 0 30px rgba(0,240,255,0.1);
+  transform:scale(1.03);
+}
+
+/* HUD */
+#game-container { position:absolute; inset:0; display:flex; flex-direction:column; }
+#hud {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0.6rem 1.5rem; background:var(--bg-panel);
+  border-bottom:1px solid var(--border-glow); height:60px; flex-shrink:0;
+  backdrop-filter:blur(10px);
+}
+#hud-left, #hud-right { display:flex; flex-direction:column; gap:2px; }
+#wave-display { font-family:'Orbitron',sans-serif; font-size:0.85rem; color:var(--neon-cyan); letter-spacing:0.1em; }
+#wave-status { font-size:0.7rem; color:var(--neon-green); letter-spacing:0.15em; }
+#hud-center { display:flex; flex-direction:column; align-items:center; gap:4px; }
+.credits-label { font-size:0.6rem; color:#5a7a8a; letter-spacing:0.2em; }
+#credits-value { font-family:'Orbitron',sans-serif; font-size:1.4rem; font-weight:700; color:var(--neon-green); text-shadow:0 0 15px rgba(57,255,20,0.4); margin-left:0.5rem; }
+#threshold-bar { width:200px; height:4px; background:rgba(255,255,255,0.08); border-radius:2px; position:relative; }
+#threshold-fill { height:100%; background:linear-gradient(90deg,var(--neon-green),var(--neon-cyan)); border-radius:2px; width:100%; transition:width 0.3s; }
+#threshold-marker { position:absolute; top:-3px; width:2px; height:10px; background:var(--neon-pink); left:10%; box-shadow:0 0 6px var(--neon-pink); }
+#threshold-warn { font-size:0.65rem; color:var(--neon-pink); letter-spacing:0.15em; animation:warnBlink 0.6s infinite; }
+#enemies-left { font-size:0.75rem; color:var(--neon-orange); letter-spacing:0.1em; text-align:right; }
+#score-display { font-family:'Orbitron',sans-serif; font-size:0.75rem; color:var(--neon-purple); text-align:right; }
+
+/* CANVAS */
+#gameCanvas { flex:1; width:100%; display:block; cursor:crosshair; min-height:0; }
+
+/* SHOP PANEL */
+#shop-panel {
+  display:flex; align-items:center; gap:1rem;
+  padding:0.5rem 1.2rem; background:var(--bg-panel);
+  border-top:1px solid var(--border-glow); height:80px; flex-shrink:0;
+  backdrop-filter:blur(10px);
+}
+.shop-title { font-family:'Orbitron',sans-serif; font-size:0.6rem; color:#3a5a6a; letter-spacing:0.2em; writing-mode:vertical-rl; text-orientation:mixed; }
+#shop-items { display:flex; gap:0.5rem; flex:1; overflow-x:auto; }
+.shop-item {
+  display:flex; align-items:center; gap:0.4rem; padding:0.3rem 0.5rem;
+  border:1px solid rgba(255,255,255,0.08); border-radius:4px;
+  cursor:pointer; transition:all 0.2s; position:relative; flex-shrink:0;
+}
+.shop-item:hover, .shop-item.selected { border-color:var(--neon-cyan); background:rgba(0,240,255,0.06); box-shadow:0 0 15px rgba(0,240,255,0.1); }
+.shop-item.selected::after { content:'SELECTED'; position:absolute; top:-8px; right:4px; font-size:0.5rem; color:var(--neon-cyan); letter-spacing:0.1em; }
+.shop-item.cant-afford { opacity:0.35; cursor:not-allowed; }
+.item-icon { width:30px; height:30px; border-radius:50%; flex-shrink:0; }
+.laser-icon { background:radial-gradient(circle, var(--neon-cyan), transparent 70%); box-shadow:0 0 10px var(--neon-cyan); }
+.plasma-icon { background:radial-gradient(circle, var(--neon-orange), transparent 70%); box-shadow:0 0 10px var(--neon-orange); }
+.emp-icon { background:radial-gradient(circle, var(--neon-purple), transparent 70%); box-shadow:0 0 10px var(--neon-purple); }
+.sell-icon { background:radial-gradient(circle, var(--neon-pink), transparent 70%); box-shadow:0 0 10px var(--neon-pink); }
+.tesla-icon { background:radial-gradient(circle, #4af0ff, transparent 70%); box-shadow:0 0 10px #4af0ff; }
+.cryo-icon { background:radial-gradient(circle, #80ffff, transparent 70%); box-shadow:0 0 10px #80ffff; }
+.missile-icon { background:radial-gradient(circle, #ff3344, transparent 70%); box-shadow:0 0 10px #ff3344; }
+.nano-icon { background:radial-gradient(circle, var(--neon-green), transparent 70%); box-shadow:0 0 10px var(--neon-green); }
+.item-name { font-family:'Orbitron',sans-serif; font-size:0.6rem; color:#c8dce8; letter-spacing:0.08em; }
+.item-cost { font-size:0.7rem; color:var(--neon-green); }
+.item-desc { font-size:0.55rem; color:#4a6a7a; }
+.sell-item .item-cost { color:var(--neon-pink); }
+.hotkey { font-size:0.6rem; color:#3a5a6a; margin-left:auto; }
+#next-wave-btn {
+  margin-left:auto; padding:0.5rem 1.5rem; background:transparent;
+  border:1px solid var(--neon-green); color:var(--neon-green);
+  font-family:'Orbitron',sans-serif; font-size:0.65rem; letter-spacing:0.15em;
+  cursor:pointer; transition:all 0.3s; white-space:nowrap;
+}
+#next-wave-btn:hover { background:rgba(57,255,20,0.1); box-shadow:0 0 20px rgba(57,255,20,0.2); }
+#next-wave-btn.disabled { opacity:0.3; pointer-events:none; }
+
+/* OVERLAY */
+#overlay {
+  position:absolute; inset:0; background:rgba(5,10,18,0.9); z-index:200;
+  display:flex; align-items:center; justify-content:center;
+  backdrop-filter:blur(6px);
+}
+#overlay-content { text-align:center; }
+#overlay-title { font-family:'Orbitron',sans-serif; font-size:clamp(2rem,5vw,4rem); letter-spacing:0.2em; margin-bottom:1rem; }
+#overlay-msg { font-size:0.9rem; color:#5a7a8a; margin-bottom:2rem; letter-spacing:0.1em; }
+#overlay-btn {
+  padding:0.8rem 2.5rem; background:transparent; border:1px solid var(--neon-cyan);
+  color:var(--neon-cyan); font-family:'Orbitron',sans-serif; font-size:0.75rem;
+  letter-spacing:0.2em; cursor:pointer; transition:all 0.3s;
+}
+#overlay-btn:hover { background:rgba(0,240,255,0.1); box-shadow:0 0 25px rgba(0,240,255,0.25); }
+
+/* WAVE ANNOUNCE */
+#wave-announce {
+  position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+  z-index:150; text-align:center; pointer-events:none;
+}
+.announce-text {
+  font-family:'Orbitron',sans-serif; font-size:clamp(2.5rem,6vw,5rem); font-weight:900;
+  color:var(--neon-pink); letter-spacing:0.3em;
+  text-shadow:0 0 30px var(--neon-pink), 0 0 80px rgba(255,45,123,0.3);
+}
+.announce-sub { font-size:0.9rem; color:var(--neon-cyan); letter-spacing:0.4em; margin-top:0.5rem; }
+
+@keyframes titlePulse { 0%,100%{ opacity:1; } 50%{ opacity:0.85; } }
+@keyframes warnBlink { 0%,100%{ opacity:1; } 50%{ opacity:0.2; } }
+</style>
+</head>
+<body>
+<div id="game-wrapper">
+  <div id="title-screen">
+    <div class="title-glow">ROSEMARY</div>
+    <div class="subtitle">VAULT DEFENSE</div>
+    <div class="title-desc">Protect the energy core. Spend wisely. Survive.</div>
+    <button id="start-btn" onclick="startGame()">INITIALIZE DEFENSE PROTOCOL</button>
+  </div>
+  <div id="game-container" style="display:none;">
+    <div id="hud">
+      <div id="hud-left">
+        <span id="wave-display">WAVE 1 / 10</span>
+        <span id="wave-status">INCOMING</span>
+      </div>
+      <div id="hud-center">
+        <div id="credits-display">
+          <span class="credits-label">VAULT CREDITS</span>
+          <span id="credits-value">10000</span>
+        </div>
+        <div id="threshold-bar">
+          <div id="threshold-fill"></div>
+          <div id="threshold-marker"></div>
+        </div>
+        <span id="threshold-warn" style="display:none;">LOW FUNDS WARNING</span>
+      </div>
+      <div id="hud-right">
+        <span id="enemies-left">HOSTILES: 0</span>
+        <span id="score-display">SCORE: 0</span>
+      </div>
+    </div>
+    <canvas id="gameCanvas"></canvas>
+    <div id="shop-panel">
+      <div class="shop-title">DEFENSE SYSTEMS</div>
+      <div id="shop-items">
+        <div class="shop-item" data-type="laser" onclick="selectGuard('laser')">
+          <div class="item-icon laser-icon"></div>
+          <div class="item-info">
+            <div class="item-name">LASER SENTRY</div>
+            <div class="item-cost">500 CR</div>
+            <div class="item-desc">Fast shots, low DMG</div>
+          </div>
+          <div class="hotkey">[1]</div>
+        </div>
+        <div class="shop-item" data-type="plasma" onclick="selectGuard('plasma')">
+          <div class="item-icon plasma-icon"></div>
+          <div class="item-info">
+            <div class="item-name">PLASMA TURRET</div>
+            <div class="item-cost">1200 CR</div>
+            <div class="item-desc">Area damage, medium</div>
+          </div>
+          <div class="hotkey">[2]</div>
+        </div>
+        <div class="shop-item" data-type="emp" onclick="selectGuard('emp')">
+          <div class="item-icon emp-icon"></div>
+          <div class="item-info">
+            <div class="item-name">EMP DRONE</div>
+            <div class="item-cost">2000 CR</div>
+            <div class="item-desc">Slows enemies</div>
+          </div>
+          <div class="hotkey">[3]</div>
+        </div>
+        <div class="shop-item" data-type="tesla" onclick="selectGuard('tesla')">
+          <div class="item-icon tesla-icon"></div>
+          <div class="item-info">
+            <div class="item-name">TESLA COIL</div>
+            <div class="item-cost">800 CR</div>
+            <div class="item-desc">Chain lightning x3</div>
+          </div>
+          <div class="hotkey">[4]</div>
+        </div>
+        <div class="shop-item" data-type="cryo" onclick="selectGuard('cryo')">
+          <div class="item-icon cryo-icon"></div>
+          <div class="item-info">
+            <div class="item-name">CRYO BEAM</div>
+            <div class="item-cost">1500 CR</div>
+            <div class="item-desc">Freeze ray, constant</div>
+          </div>
+          <div class="hotkey">[5]</div>
+        </div>
+        <div class="shop-item" data-type="missile" onclick="selectGuard('missile')">
+          <div class="item-icon missile-icon"></div>
+          <div class="item-info">
+            <div class="item-name">MISSILE BAY</div>
+            <div class="item-cost">2500 CR</div>
+            <div class="item-desc">Homing rockets, AOE</div>
+          </div>
+          <div class="hotkey">[6]</div>
+        </div>
+        <div class="shop-item" data-type="nano" onclick="selectGuard('nano')">
+          <div class="item-icon nano-icon"></div>
+          <div class="item-info">
+            <div class="item-name">NANO SWARM</div>
+            <div class="item-cost">1800 CR</div>
+            <div class="item-desc">Poison cloud DOT</div>
+          </div>
+          <div class="hotkey">[7]</div>
+        </div>
+        <div class="shop-item sell-item" data-type="sell" onclick="selectGuard('sell')">
+          <div class="item-icon sell-icon"></div>
+          <div class="item-info">
+            <div class="item-name">SELL / REMOVE</div>
+            <div class="item-cost">50% refund</div>
+          </div>
+          <div class="hotkey">[8]</div>
+        </div>
+      </div>
+      <div id="next-wave-btn" onclick="sendNextWave()">SEND NEXT WAVE ▶</div>
+    </div>
+  </div>
+  <div id="overlay" style="display:none;">
+    <div id="overlay-content">
+      <div id="overlay-title"></div>
+      <div id="overlay-msg"></div>
+      <button id="overlay-btn" onclick="restartGame()">REINITIALIZE</button>
+    </div>
+  </div>
+  <div id="wave-announce" style="display:none;">
+    <div class="announce-text">WAVE <span id="announce-num">1</span></div>
+    <div class="announce-sub">HOSTILES INCOMING</div>
+  </div>
+</div>
+<script>
+// ===== GAME CONFIG =====
+const CFG = {
+  startCredits: 10000,
+  minCredits: 1000,
+  totalWaves: 10,
+  gridCols: 16,
+  gridRows: 8,
+  guards: {
+    laser:  { cost:500,  range:140, damage:8,   fireRate:0.3,  color:'#00f0ff', name:'Laser Sentry', projSpeed:500, aoe:0 },
+    plasma: { cost:1200, range:160, damage:25,  fireRate:1.0,  color:'#ff6a00', name:'Plasma Turret', projSpeed:300, aoe:50 },
+    emp:    { cost:2000, range:180, damage:5,   fireRate:1.5,  color:'#b44aff', name:'EMP Drone', projSpeed:250, aoe:70, slowFactor:0.35, slowDuration:3 },
+    tesla:  { cost:800,  range:130, damage:12,  fireRate:0.7,  color:'#4af0ff', name:'Tesla Coil', projSpeed:0, aoe:0, chainCount:3, chainRange:90 },
+    cryo:   { cost:1500, range:120, damage:3,   fireRate:0.05, color:'#80ffff', name:'Cryo Beam', projSpeed:0, aoe:0, slowFactor:0.2, slowDuration:1.5, isBeam:true },
+    missile:{ cost:2500, range:220, damage:60,  fireRate:2.5,  color:'#ff3344', name:'Missile Battery', projSpeed:180, aoe:65, homing:true },
+    nano:   { cost:1800, range:150, damage:0,   fireRate:3.0,  color:'#39ff14', name:'Nano Swarm', projSpeed:0, aoe:0, dotDamage:15, dotDuration:4 }
+  },
+  enemyTypes: [
+    { name:'Drone',    speed:45,  hp:40,  reward:30,  color:'#ff2d7b', size:10 },
+    { name:'Hacker',   speed:35,  hp:80,  reward:50,  color:'#ff6a00', size:13 },
+    { name:'Mech',     speed:22,  hp:200, reward:100, color:'#b44aff', size:17 },
+    { name:'Phantom',  speed:65,  hp:30,  reward:40,  color:'#39ff14', size:9 }
+  ]
+};
+
+// ===== GAME STATE =====
+let G = {};
+let canvas, ctx, W, H, cellW, cellH, canvasW, canvasH;
+let animFrame = null;
+let lastTime = 0;
+let selectedGuard = null;
+let hoverCell = null;
+
+function initState() {
+  G = {
+    credits: CFG.startCredits,
+    wave: 0,
+    score: 0,
+    guards: [],
+    enemies: [],
+    projectiles: [],
+    particles: [],
+    floatingTexts: [],
+    ambientParticles: [],
+    beams: [],       // for cryo beam + tesla chain visuals
+    dotEffects: [],  // for nano swarm damage-over-time
+    state: 'prep', // prep, wave, between, won, lost
+    enemyQueue: [],
+    spawnTimer: 0,
+    shakeAmount: 0,
+    shakeDecay: 0,
+    gridOccupied: new Set(),
+    bgOffset: 0,
+    vaultPulse: 0,
+    waveAnnounceTimer: 0
+  };
+}
+
+// ===== INIT =====
+function startGame() {
+  document.getElementById('title-screen').style.display = 'none';
+  document.getElementById('game-container').style.display = 'flex';
+  document.getElementById('overlay').style.display = 'none';
+  canvas = document.getElementById('gameCanvas');
+  ctx = canvas.getContext('2d');
+  initState();
+  canvas.addEventListener('mousemove', onMouseMove);
+  canvas.addEventListener('click', onCanvasClick);
+  canvas.addEventListener('contextmenu', e => { e.preventDefault(); selectedGuard = null; updateShopUI(); });
+  document.addEventListener('keydown', onKeyDown);
+  updateHUD();
+  updateShopUI();
+  // Wait one frame for flex layout to complete before measuring canvas
+  requestAnimationFrame(() => {
+    resize();
+    window.addEventListener('resize', resize);
+    if (animFrame) cancelAnimationFrame(animFrame);
+    lastTime = performance.now();
+    loop(lastTime);
+  });
+}
+
+function restartGame() {
+  document.getElementById('overlay').style.display = 'none';
+  initState();
+  selectedGuard = null;
+  updateHUD();
+  updateShopUI();
+  lastTime = performance.now();
+}
+
+function resize() {
+  const rect = canvas.getBoundingClientRect();
+  if (rect.width === 0 || rect.height === 0) return;
+  // Pin CSS size first so setting canvas.width doesn't change layout
+  canvas.style.width = rect.width + 'px';
+  canvas.style.height = rect.height + 'px';
+  W = canvas.width = Math.round(rect.width * devicePixelRatio);
+  H = canvas.height = Math.round(rect.height * devicePixelRatio);
+  ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+  canvasW = rect.width;
+  canvasH = rect.height;
+  cellW = canvasW / CFG.gridCols;
+  cellH = canvasH / CFG.gridRows;
+}
+
+// ===== INPUT =====
+function onMouseMove(e) {
+  const r = canvas.getBoundingClientRect();
+  const mx = e.clientX - r.left;
+  const my = e.clientY - r.top;
+  const col = Math.floor(mx / cellW);
+  const row = Math.floor(my / cellH);
+  if (col >= 1 && col < CFG.gridCols - 2 && row >= 0 && row < CFG.gridRows) {
+    hoverCell = { col, row };
+  } else {
+    hoverCell = null;
+  }
+}
+
+function onCanvasClick(e) {
+  if (!hoverCell) return;
+  const key = hoverCell.col + ',' + hoverCell.row;
+
+  if (selectedGuard === 'sell') {
+    const idx = G.guards.findIndex(g => g.col === hoverCell.col && g.row === hoverCell.row);
+    if (idx !== -1) {
+      const g = G.guards[idx];
+      const refund = Math.floor(CFG.guards[g.type].cost * 0.5);
+      G.credits += refund;
+      addFloatingText(g.x, g.y, '+' + refund, '#39ff14');
+      spawnParticles(g.x, g.y, g.color, 12);
+      G.gridOccupied.delete(key);
+      G.guards.splice(idx, 1);
+      updateHUD();
+    }
+    return;
+  }
+
+  if (!selectedGuard || !CFG.guards[selectedGuard]) return;
+  const gc = CFG.guards[selectedGuard];
+  if (G.credits < gc.cost) return;
+  if (G.gridOccupied.has(key)) return;
+
+  // Place guard
+  G.credits -= gc.cost;
+  G.gridOccupied.add(key);
+  const gx = (hoverCell.col + 0.5) * cellW;
+  const gy = (hoverCell.row + 0.5) * cellH;
+  G.guards.push({
+    type: selectedGuard, col: hoverCell.col, row: hoverCell.row,
+    x: gx, y: gy, cooldown: 0, angle: 0, color: gc.color, pulsePhase: Math.random() * Math.PI * 2
+  });
+  spawnParticles(gx, gy, gc.color, 15);
+  addFloatingText(gx, gy - 15, '-' + gc.cost, '#ff2d7b');
+  updateHUD();
+  checkOverspend();
+}
+
+function onKeyDown(e) {
+  if (e.key === '1') selectGuard('laser');
+  else if (e.key === '2') selectGuard('plasma');
+  else if (e.key === '3') selectGuard('emp');
+  else if (e.key === '4') selectGuard('tesla');
+  else if (e.key === '5') selectGuard('cryo');
+  else if (e.key === '6') selectGuard('missile');
+  else if (e.key === '7') selectGuard('nano');
+  else if (e.key === '8') selectGuard('sell');
+  else if (e.key === 'Escape') { selectedGuard = null; updateShopUI(); }
+}
+
+function selectGuard(type) {
+  if (type !== 'sell' && CFG.guards[type] && G.credits < CFG.guards[type].cost) return;
+  selectedGuard = selectedGuard === type ? null : type;
+  updateShopUI();
+}
+
+// ===== WAVES =====
+function generateWave(waveNum) {
+  const queue = [];
+  const count = 5 + waveNum * 3;
+  const hpMult = 1 + (waveNum - 1) * 0.35;
+  const speedMult = 1 + (waveNum - 1) * 0.08;
+
+  for (let i = 0; i < count; i++) {
+    let typeIdx;
+    if (waveNum <= 2) typeIdx = 0;
+    else if (waveNum <= 4) typeIdx = Math.random() < 0.6 ? 0 : 1;
+    else if (waveNum <= 7) typeIdx = [0,0,1,1,2,3][Math.floor(Math.random()*6)];
+    else typeIdx = Math.floor(Math.random() * CFG.enemyTypes.length);
+
+    const base = CFG.enemyTypes[typeIdx];
+    const row = Math.floor(Math.random() * CFG.gridRows);
+    const spawnInterval = 0.6 - Math.min(waveNum * 0.03, 0.35);
+    queue.push({
+      ...base,
+      hp: Math.floor(base.hp * hpMult),
+      maxHp: Math.floor(base.hp * hpMult),
+      speed: base.speed * speedMult,
+      row: row,
+      delay: spawnInterval
+    });
+  }
+  return queue;
+}
+
+function sendNextWave() {
+  if (G.state === 'wave') return;
+  if (G.wave >= CFG.totalWaves) return;
+  G.wave++;
+  G.state = 'wave';
+  G.enemyQueue = generateWave(G.wave);
+  G.spawnTimer = 0.5; // brief delay before first spawn
+  showWaveAnnounce(G.wave);
+  updateHUD();
+  document.getElementById('next-wave-btn').classList.add('disabled');
+}
+
+function showWaveAnnounce(num) {
+  const el = document.getElementById('wave-announce');
+  document.getElementById('announce-num').textContent = num;
+  el.style.display = 'block';
+  el.style.opacity = '1';
+  el.style.transform = 'translate(-50%,-50%) scale(1)';
+  G.waveAnnounceTimer = 2.0;
+}
+
+function spawnEnemy(data) {
+  G.enemies.push({
+    x: -20,
+    y: (data.row + 0.5) * cellH,
+    row: data.row,
+    speed: data.speed,
+    hp: data.hp,
+    maxHp: data.maxHp,
+    color: data.color,
+    size: data.size,
+    name: data.name,
+    reward: data.reward,
+    slowTimer: 0,
+    slowFactor: 1,
+    phase: Math.random() * Math.PI * 2,
+    alive: true
+  });
+}
+
+// ===== PROJECTILES & PARTICLES =====
+function fireProjectile(guard, target) {
+  const gc = CFG.guards[guard.type];
+  const dx = target.x - guard.x;
+  const dy = target.y - guard.y;
+  const dist = Math.sqrt(dx*dx+dy*dy);
+  const vx = (dx/dist) * gc.projSpeed;
+  const vy = (dy/dist) * gc.projSpeed;
+  G.projectiles.push({
+    x: guard.x, y: guard.y, vx, vy,
+    damage: gc.damage, color: gc.color,
+    type: guard.type, aoe: gc.aoe,
+    slowFactor: gc.slowFactor || 0,
+    slowDuration: gc.slowDuration || 0,
+    life: 2.0, targetId: target
+  });
+}
+
+function spawnParticles(x, y, color, count) {
+  for (let i = 0; i < count; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 30 + Math.random() * 120;
+    G.particles.push({
+      x, y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      life: 0.4 + Math.random() * 0.6,
+      maxLife: 0.4 + Math.random() * 0.6,
+      color, size: 1.5 + Math.random() * 3
+    });
+  }
+}
+
+function addFloatingText(x, y, text, color) {
+  G.floatingTexts.push({ x, y, text, color, life: 1.2, maxLife: 1.2 });
+}
+
+// ===== UPDATE =====
+function update(dt) {
+  if (G.state === 'lost' || G.state === 'won') return;
+
+  G.bgOffset += dt * 15;
+  G.vaultPulse += dt * 2.5;
+  if (G.shakeAmount > 0) { G.shakeAmount *= Math.pow(G.shakeDecay, dt * 60); if (G.shakeAmount < 0.3) G.shakeAmount = 0; }
+
+  // Ambient particles
+  if (G.ambientParticles.length < 30 && Math.random() < dt * 5) {
+    const cw2 = canvasW;
+    const ch2 = canvasH;
+    G.ambientParticles.push({
+      x: Math.random() * cw2, y: Math.random() * ch2,
+      vx: (Math.random()-0.5)*8, vy: -5 - Math.random()*10,
+      life: 3 + Math.random()*4, maxLife: 3 + Math.random()*4,
+      size: 0.5 + Math.random()*1.5
+    });
+  }
+  for (let i = G.ambientParticles.length-1; i >= 0; i--) {
+    const ap = G.ambientParticles[i];
+    ap.x += ap.vx * dt; ap.y += ap.vy * dt;
+    ap.life -= dt;
+    if (ap.life <= 0) G.ambientParticles.splice(i, 1);
+  }
+
+  // Wave announce fade
+  if (G.waveAnnounceTimer > 0) {
+    G.waveAnnounceTimer -= dt;
+    if (G.waveAnnounceTimer <= 0) {
+      document.getElementById('wave-announce').style.display = 'none';
+    } else if (G.waveAnnounceTimer < 0.5) {
+      document.getElementById('wave-announce').style.opacity = G.waveAnnounceTimer / 0.5;
+    }
+  }
+
+  // Spawn enemies
+  if (G.state === 'wave' && G.enemyQueue.length > 0) {
+    G.spawnTimer -= dt;
+    if (G.spawnTimer <= 0) {
+      const data = G.enemyQueue.shift();
+      spawnEnemy(data);
+      if (G.enemyQueue.length > 0) {
+        G.spawnTimer = G.enemyQueue[0].delay;
+      }
+    }
+  }
+
+  const cw = canvasW;
+  const vaultX = cw - cellW;
+
+  // Update enemies
+  for (let e of G.enemies) {
+    if (!e.alive) continue;
+    e.phase += dt * 4;
+    const slowMult = e.slowTimer > 0 ? e.slowFactor : 1;
+    e.x += e.speed * slowMult * dt;
+    if (e.slowTimer > 0) e.slowTimer -= dt;
+
+    // Breach check
+    if (e.x >= vaultX) {
+      gameLose('VAULT BREACHED', 'A hostile infiltrator reached the energy core.');
+      return;
+    }
+  }
+
+  // Clear beams each frame
+  G.beams = [];
+
+  // Guard targeting & firing
+  for (let g of G.guards) {
+    const gc = CFG.guards[g.type];
+    g.cooldown -= dt;
+    g.pulsePhase += dt * 3;
+
+    // Find closest target in range
+    let bestDist = gc.range + 1;
+    let target = null;
+    for (let e of G.enemies) {
+      if (!e.alive) continue;
+      const dx = e.x - g.x;
+      const dy = e.y - g.y;
+      const dist = Math.sqrt(dx*dx+dy*dy);
+      if (dist < bestDist) { bestDist = dist; target = e; }
+    }
+
+    if (target) {
+      g.angle = Math.atan2(target.y - g.y, target.x - g.x);
+
+      // === CRYO BEAM: continuous beam, no projectile ===
+      if (g.type === 'cryo') {
+        G.beams.push({ x1:g.x, y1:g.y, x2:target.x, y2:target.y, color:gc.color, width:3 });
+        if (g.cooldown <= 0) {
+          damageEnemy(target, gc.damage);
+          target.slowTimer = gc.slowDuration;
+          target.slowFactor = gc.slowFactor;
+          g.cooldown = gc.fireRate;
+          // Frost particles
+          if (Math.random() < 0.3) {
+            G.particles.push({ x:target.x, y:target.y, vx:(Math.random()-0.5)*40, vy:(Math.random()-0.5)*40-20, life:0.4, maxLife:0.4, color:'#80ffff', size:2 });
+          }
+        }
+      }
+      // === TESLA COIL: chain lightning ===
+      else if (g.type === 'tesla') {
+        if (g.cooldown <= 0) {
+          g.cooldown = gc.fireRate;
+          let chainTargets = [target];
+          let lastTarget = target;
+          damageEnemy(target, gc.damage);
+          spawnParticles(target.x, target.y, gc.color, 5);
+
+          // Chain to nearby enemies
+          for (let c = 0; c < gc.chainCount; c++) {
+            let nextBest = null;
+            let nextDist = gc.chainRange + 1;
+            for (let e of G.enemies) {
+              if (!e.alive || chainTargets.includes(e)) continue;
+              const d = Math.sqrt((e.x-lastTarget.x)**2+(e.y-lastTarget.y)**2);
+              if (d < nextDist) { nextDist = d; nextBest = e; }
+            }
+            if (nextBest) {
+              chainTargets.push(nextBest);
+              damageEnemy(nextBest, gc.damage * (0.7 ** (c+1)));
+              spawnParticles(nextBest.x, nextBest.y, gc.color, 3);
+              lastTarget = nextBest;
+            } else break;
+          }
+
+          // Store chain beams for rendering (persist briefly)
+          for (let c = 0; c < chainTargets.length; c++) {
+            const from = c === 0 ? {x:g.x, y:g.y} : chainTargets[c-1];
+            const to = chainTargets[c];
+            G.beams.push({ x1:from.x, y1:from.y, x2:to.x, y2:to.y, color:gc.color, width:2, jagged:true });
+          }
+          G.shakeAmount = 2; G.shakeDecay = 0.9;
+        }
+      }
+      // === NANO SWARM: apply DOT to all enemies in range ===
+      else if (g.type === 'nano') {
+        if (g.cooldown <= 0) {
+          g.cooldown = gc.fireRate;
+          for (let e of G.enemies) {
+            if (!e.alive) continue;
+            const d = Math.sqrt((e.x-g.x)**2+(e.y-g.y)**2);
+            if (d < gc.range) {
+              // Add or refresh DOT
+              let existing = G.dotEffects.find(dot => dot.enemy === e && dot.source === g);
+              if (existing) {
+                existing.remaining = gc.dotDuration;
+              } else {
+                G.dotEffects.push({ enemy: e, source: g, dps: gc.dotDamage, remaining: gc.dotDuration, color: gc.color });
+              }
+              spawnParticles(e.x, e.y, gc.color, 3);
+            }
+          }
+          // Swarm burst visual
+          spawnParticles(g.x, g.y, gc.color, 12);
+          addFloatingText(g.x, g.y - 15, 'SWARM', '#39ff14');
+        }
+      }
+      // === MISSILE: homing projectile ===
+      else if (g.type === 'missile') {
+        if (g.cooldown <= 0) {
+          g.cooldown = gc.fireRate;
+          const dx = target.x - g.x;
+          const dy = target.y - g.y;
+          const dist = Math.sqrt(dx*dx+dy*dy);
+          G.projectiles.push({
+            x: g.x, y: g.y,
+            vx: (dx/dist) * gc.projSpeed,
+            vy: (dy/dist) * gc.projSpeed,
+            damage: gc.damage, color: gc.color,
+            type: 'missile', aoe: gc.aoe,
+            slowFactor: 0, slowDuration: 0,
+            life: 4.0, homingTarget: target, homingSpeed: gc.projSpeed
+          });
+        }
+      }
+      // === DEFAULT: standard projectile (laser, plasma, emp) ===
+      else {
+        if (g.cooldown <= 0) {
+          fireProjectile(g, target);
+          g.cooldown = gc.fireRate;
+        }
+      }
+    }
+  }
+
+  // Update DOT effects
+  for (let i = G.dotEffects.length - 1; i >= 0; i--) {
+    const dot = G.dotEffects[i];
+    if (!dot.enemy.alive) { G.dotEffects.splice(i,1); continue; }
+    dot.remaining -= dt;
+    dot.enemy.dotTimer = (dot.enemy.dotTimer || 0) + dt;
+    if (dot.enemy.dotTimer >= 0.5) {
+      dot.enemy.dotTimer -= 0.5;
+      damageEnemy(dot.enemy, dot.dps * 0.5);
+      G.particles.push({ x:dot.enemy.x, y:dot.enemy.y, vx:(Math.random()-0.5)*30, vy:-20-Math.random()*20, life:0.3, maxLife:0.3, color:dot.color, size:2 });
+    }
+    if (dot.remaining <= 0) G.dotEffects.splice(i,1);
+  }
+
+  // Update projectiles
+  for (let i = G.projectiles.length - 1; i >= 0; i--) {
+    const p = G.projectiles[i];
+
+    // Homing logic for missiles
+    if (p.homingTarget && p.homingTarget.alive) {
+      const dx = p.homingTarget.x - p.x;
+      const dy = p.homingTarget.y - p.y;
+      const dist = Math.sqrt(dx*dx+dy*dy);
+      if (dist > 1) {
+        const desiredVx = (dx/dist) * p.homingSpeed;
+        const desiredVy = (dy/dist) * p.homingSpeed;
+        p.vx += (desiredVx - p.vx) * 0.08;
+        p.vy += (desiredVy - p.vy) * 0.08;
+      }
+    }
+
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    p.life -= dt;
+
+    // Trail particles
+    if (Math.random() < 0.4) {
+      G.particles.push({
+        x: p.x, y: p.y, vx: (Math.random()-0.5)*20, vy: (Math.random()-0.5)*20,
+        life: 0.2, maxLife: 0.2, color: p.color, size: 1.5
+      });
+    }
+
+    if (p.life <= 0 || p.x < -50 || p.x > cw+50 || p.y < -50 || p.y > canvasH+50) {
+      G.projectiles.splice(i, 1);
+      continue;
+    }
+
+    // Hit check
+    let hit = false;
+    for (let e of G.enemies) {
+      if (!e.alive) continue;
+      const dx = p.x - e.x;
+      const dy = p.y - e.y;
+      if (dx*dx+dy*dy < (e.size+6)*(e.size+6)) {
+        hit = true;
+        if (p.aoe > 0) {
+          // AOE damage
+          for (let e2 of G.enemies) {
+            if (!e2.alive) continue;
+            const d2 = Math.sqrt((p.x-e2.x)**2+(p.y-e2.y)**2);
+            if (d2 < p.aoe) {
+              damageEnemy(e2, p.damage * (1 - d2/p.aoe*0.5));
+              if (p.slowFactor > 0) { e2.slowTimer = p.slowDuration; e2.slowFactor = p.slowFactor; }
+            }
+          }
+          spawnParticles(p.x, p.y, p.color, 20);
+        } else {
+          damageEnemy(e, p.damage);
+          if (p.slowFactor > 0) { e.slowTimer = p.slowDuration; e.slowFactor = p.slowFactor; }
+          spawnParticles(p.x, p.y, p.color, 8);
+        }
+        G.shakeAmount = p.aoe > 0 ? 4 : 2;
+        G.shakeDecay = 0.88;
+        break;
+      }
+    }
+    if (hit) G.projectiles.splice(i, 1);
+  }
+
+  // Remove dead enemies
+  G.enemies = G.enemies.filter(e => e.alive);
+
+  // Update particles
+  for (let i = G.particles.length - 1; i >= 0; i--) {
+    const p = G.particles[i];
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    p.life -= dt;
+    p.vx *= 0.96;
+    p.vy *= 0.96;
+    if (p.life <= 0) G.particles.splice(i, 1);
+  }
+
+  // Update floating texts
+  for (let i = G.floatingTexts.length - 1; i >= 0; i--) {
+    const ft = G.floatingTexts[i];
+    ft.y -= 30 * dt;
+    ft.life -= dt;
+    if (ft.life <= 0) G.floatingTexts.splice(i, 1);
+  }
+
+  // Check wave complete
+  if (G.state === 'wave' && G.enemyQueue.length === 0 && G.enemies.length === 0) {
+    if (G.wave >= CFG.totalWaves) {
+      gameWin();
+    } else {
+      G.state = 'prep';
+      document.getElementById('next-wave-btn').classList.remove('disabled');
+      document.getElementById('wave-status').textContent = 'STANDBY';
+    }
+    updateHUD();
+    updateShopUI();
+  }
+
+  document.getElementById('enemies-left').textContent = 'HOSTILES: ' + G.enemies.length;
+}
+
+function damageEnemy(e, dmg) {
+  e.hp -= dmg;
+  if (e.hp <= 0) {
+    e.alive = false;
+    G.credits += e.reward;
+    G.score += e.reward;
+    spawnParticles(e.x, e.y, e.color, 25);
+    addFloatingText(e.x, e.y, '+' + e.reward, '#39ff14');
+    updateHUD();
+  }
+}
+
+function checkOverspend() {
+  if (G.credits < CFG.minCredits) {
+    gameLose('FUNDS DEPLETED', 'Vault reserves dropped below critical threshold.');
+  }
+}
+
+function gameLose(title, msg) {
+  G.state = 'lost';
+  const el = document.getElementById('overlay');
+  document.getElementById('overlay-title').textContent = title;
+  document.getElementById('overlay-title').style.color = '#ff2d7b';
+  document.getElementById('overlay-title').style.textShadow = '0 0 30px #ff2d7b';
+  document.getElementById('overlay-msg').textContent = msg + ' Final score: ' + G.score;
+  el.style.display = 'flex';
+}
+
+function gameWin() {
+  G.state = 'won';
+  const el = document.getElementById('overlay');
+  document.getElementById('overlay-title').textContent = 'VAULT SECURED';
+  document.getElementById('overlay-title').style.color = '#39ff14';
+  document.getElementById('overlay-title').style.textShadow = '0 0 30px #39ff14';
+  document.getElementById('overlay-msg').textContent = 'All waves neutralized. Credits remaining: ' + G.credits + '. Score: ' + G.score;
+  el.style.display = 'flex';
+}
+
+// ===== HUD UPDATE =====
+function updateHUD() {
+  document.getElementById('wave-display').textContent = 'WAVE ' + Math.max(1,G.wave) + ' / ' + CFG.totalWaves;
+  document.getElementById('credits-value').textContent = G.credits;
+  document.getElementById('score-display').textContent = 'SCORE: ' + G.score;
+  const pct = Math.max(0, Math.min(100, (G.credits / CFG.startCredits) * 100));
+  document.getElementById('threshold-fill').style.width = pct + '%';
+  const warn = document.getElementById('threshold-warn');
+  if (G.credits < CFG.minCredits * 2) { warn.style.display = 'block'; } else { warn.style.display = 'none'; }
+  if (G.state === 'wave') document.getElementById('wave-status').textContent = 'ACTIVE';
+}
+
+function updateShopUI() {
+  document.querySelectorAll('.shop-item').forEach(el => {
+    el.classList.remove('selected', 'cant-afford');
+    const type = el.dataset.type;
+    if (type === selectedGuard) el.classList.add('selected');
+    if (type && type !== 'sell' && CFG.guards[type] && G.credits < CFG.guards[type].cost) el.classList.add('cant-afford');
+  });
+}
+
+// ===== RENDER =====
+function render() {
+  const cw = canvasW;
+  const ch = canvasH;
+  if (!cw || !ch) return;
+  ctx.save();
+
+  // Shake
+  if (G.shakeAmount > 0) {
+    ctx.translate((Math.random()-0.5)*G.shakeAmount*2, (Math.random()-0.5)*G.shakeAmount*2);
+  }
+
+  // Background
+  ctx.fillStyle = '#050a12';
+  ctx.fillRect(0, 0, cw, ch);
+
+  // Neon grid
+  ctx.strokeStyle = 'rgba(0,240,255,0.04)';
+  ctx.lineWidth = 1;
+  const gridSize = 40;
+  const off = G.bgOffset % gridSize;
+  for (let x = -off; x < cw + gridSize; x += gridSize) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, ch); ctx.stroke();
+  }
+  for (let y = 0; y < ch; y += gridSize) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(cw, y); ctx.stroke();
+  }
+
+  // Ambient particles
+  for (let ap of G.ambientParticles) {
+    const a = (ap.life / ap.maxLife) * 0.25;
+    ctx.beginPath();
+    ctx.arc(ap.x, ap.y, ap.size, 0, Math.PI*2);
+    ctx.fillStyle = `rgba(0,240,255,${a})`;
+    ctx.fill();
+  }
+
+  // Placement grid (subtle)
+  ctx.strokeStyle = 'rgba(0,240,255,0.06)';
+  for (let c = 1; c < CFG.gridCols - 2; c++) {
+    for (let r = 0; r < CFG.gridRows; r++) {
+      ctx.strokeRect(c*cellW, r*cellH, cellW, cellH);
+    }
+  }
+
+  // Vault zone
+  const vaultX = (CFG.gridCols - 2) * cellW;
+  const pulse = Math.sin(G.vaultPulse) * 0.3 + 0.7;
+  const vaultGrad = ctx.createLinearGradient(vaultX, 0, cw, 0);
+  vaultGrad.addColorStop(0, `rgba(0,240,255,${0.02*pulse})`);
+  vaultGrad.addColorStop(1, `rgba(0,240,255,${0.08*pulse})`);
+  ctx.fillStyle = vaultGrad;
+  ctx.fillRect(vaultX, 0, cw-vaultX, ch);
+
+  // Vault core
+  const vcx = cw - cellW * 0.8;
+  const vcy = ch / 2;
+  const coreSize = 25 + Math.sin(G.vaultPulse) * 5;
+  ctx.beginPath();
+  ctx.arc(vcx, vcy, coreSize, 0, Math.PI*2);
+  ctx.fillStyle = `rgba(0,240,255,${0.15*pulse})`;
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(vcx, vcy, coreSize * 0.6, 0, Math.PI*2);
+  ctx.fillStyle = `rgba(0,240,255,${0.4*pulse})`;
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(vcx, vcy, coreSize * 0.25, 0, Math.PI*2);
+  ctx.fillStyle = `rgba(255,255,255,${0.8*pulse})`;
+  ctx.fill();
+  // Core rings
+  ctx.strokeStyle = `rgba(0,240,255,${0.2*pulse})`;
+  ctx.lineWidth = 1.5;
+  for (let ring = 0; ring < 3; ring++) {
+    ctx.beginPath();
+    ctx.arc(vcx, vcy, coreSize + 12 + ring * 12, G.vaultPulse + ring, G.vaultPulse + ring + Math.PI*1.3);
+    ctx.stroke();
+  }
+  // VAULT label
+  ctx.font = '10px Orbitron';
+  ctx.fillStyle = `rgba(0,240,255,${0.5*pulse})`;
+  ctx.textAlign = 'center';
+  ctx.fillText('ENERGY CORE', vcx, vcy + coreSize + 30);
+
+  // Hover cell highlight
+  if (hoverCell && selectedGuard) {
+    const key = hoverCell.col + ',' + hoverCell.row;
+    const occupied = G.gridOccupied.has(key);
+    const isSellingOccupied = selectedGuard === 'sell' && occupied;
+    const canPlace = !occupied && selectedGuard !== 'sell' && CFG.guards[selectedGuard] && G.credits >= CFG.guards[selectedGuard].cost;
+
+    if (canPlace) {
+      ctx.fillStyle = 'rgba(0,240,255,0.12)';
+      ctx.strokeStyle = 'rgba(0,240,255,0.5)';
+    } else if (isSellingOccupied) {
+      ctx.fillStyle = 'rgba(255,45,123,0.15)';
+      ctx.strokeStyle = 'rgba(255,45,123,0.5)';
+    } else {
+      ctx.fillStyle = 'rgba(255,45,123,0.08)';
+      ctx.strokeStyle = 'rgba(255,45,123,0.3)';
+    }
+    ctx.fillRect(hoverCell.col * cellW, hoverCell.row * cellH, cellW, cellH);
+    ctx.strokeRect(hoverCell.col * cellW, hoverCell.row * cellH, cellW, cellH);
+
+    // Range preview
+    if (canPlace && CFG.guards[selectedGuard]) {
+      const gc = CFG.guards[selectedGuard];
+      ctx.beginPath();
+      ctx.arc((hoverCell.col+0.5)*cellW, (hoverCell.row+0.5)*cellH, gc.range, 0, Math.PI*2);
+      ctx.strokeStyle = `rgba(0,240,255,0.15)`;
+      ctx.stroke();
+    }
+  }
+
+  // Draw guards
+  for (let g of G.guards) {
+    const gc = CFG.guards[g.type];
+    const pulse2 = Math.sin(g.pulsePhase) * 0.2 + 0.8;
+
+    ctx.save();
+    ctx.translate(g.x, g.y);
+
+    // Base glow
+    ctx.beginPath();
+    ctx.arc(0, 0, 16, 0, Math.PI*2);
+    ctx.fillStyle = g.color + '15';
+    ctx.fill();
+
+    // Nano range pulse
+    if (g.type === 'nano' && G.enemies.length > 0) {
+      const gc2 = CFG.guards.nano;
+      ctx.beginPath();
+      ctx.arc(0, 0, gc2.range, 0, Math.PI*2);
+      ctx.strokeStyle = g.color + '10';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      // Expanding pulse ring
+      const pr = (g.pulsePhase % (Math.PI*2)) / (Math.PI*2) * gc2.range;
+      ctx.beginPath();
+      ctx.arc(0, 0, pr, 0, Math.PI*2);
+      ctx.strokeStyle = g.color + '18';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+
+    // Body
+    if (g.type === 'laser') {
+      // Hexagon
+      ctx.beginPath();
+      for (let i = 0; i < 6; i++) {
+        const a = i * Math.PI / 3 - Math.PI/6;
+        const r = 11;
+        ctx[i===0?'moveTo':'lineTo'](Math.cos(a)*r, Math.sin(a)*r);
+      }
+      ctx.closePath();
+      ctx.fillStyle = '#0a1628';
+      ctx.fill();
+      ctx.strokeStyle = g.color;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      // Barrel
+      ctx.save();
+      ctx.rotate(g.angle);
+      ctx.fillStyle = g.color;
+      ctx.fillRect(4, -1.5, 14, 3);
+      ctx.restore();
+    } else if (g.type === 'plasma') {
+      // Square with notches
+      ctx.fillStyle = '#0a1628';
+      ctx.fillRect(-12, -12, 24, 24);
+      ctx.strokeStyle = g.color;
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(-12, -12, 24, 24);
+      ctx.strokeRect(-8, -8, 16, 16);
+      // Barrel
+      ctx.save();
+      ctx.rotate(g.angle);
+      ctx.fillStyle = g.color;
+      ctx.fillRect(6, -2.5, 12, 5);
+      ctx.restore();
+    } else if (g.type === 'emp') {
+      // Orbiting circle
+      ctx.beginPath();
+      ctx.arc(0, 0, 13, 0, Math.PI*2);
+      ctx.fillStyle = '#0a1628';
+      ctx.fill();
+      ctx.strokeStyle = g.color;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.strokeStyle = g.color + '60';
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 18, 8, g.pulsePhase, 0, Math.PI*2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(0, 0, 4, 0, Math.PI*2);
+      ctx.fillStyle = g.color;
+      ctx.globalAlpha = pulse2;
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    } else if (g.type === 'tesla') {
+      // Tesla coil - vertical spire
+      ctx.fillStyle = '#0a1628';
+      ctx.beginPath();
+      ctx.moveTo(-8, 12); ctx.lineTo(8, 12); ctx.lineTo(4, -14); ctx.lineTo(-4, -14);
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = g.color; ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(-8, 12); ctx.lineTo(8, 12); ctx.lineTo(4, -14); ctx.lineTo(-4, -14);
+      ctx.closePath(); ctx.stroke();
+      // Spark on top
+      ctx.beginPath();
+      ctx.arc(0, -14, 4 + Math.sin(g.pulsePhase*3)*2, 0, Math.PI*2);
+      ctx.fillStyle = g.color;
+      ctx.globalAlpha = pulse2;
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      // Mini arcs
+      for (let a = 0; a < 3; a++) {
+        const ang = g.pulsePhase*2 + a*2.1;
+        ctx.beginPath();
+        ctx.moveTo(0, -14);
+        ctx.lineTo(Math.cos(ang)*12, -14+Math.sin(ang)*8);
+        ctx.strokeStyle = g.color + '80'; ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+    } else if (g.type === 'cryo') {
+      // Cryo beam - octagon with beam line
+      ctx.beginPath();
+      for (let i = 0; i < 8; i++) {
+        const a = i * Math.PI / 4;
+        ctx[i===0?'moveTo':'lineTo'](Math.cos(a)*12, Math.sin(a)*12);
+      }
+      ctx.closePath();
+      ctx.fillStyle = '#0a1628'; ctx.fill();
+      ctx.strokeStyle = g.color; ctx.lineWidth = 1.5; ctx.stroke();
+      // Inner frost pattern
+      ctx.beginPath();
+      ctx.arc(0, 0, 5, 0, Math.PI*2);
+      ctx.fillStyle = g.color + '40'; ctx.fill();
+      // Barrel
+      ctx.save(); ctx.rotate(g.angle);
+      ctx.fillStyle = g.color;
+      ctx.fillRect(6, -2, 10, 4);
+      ctx.fillRect(12, -3.5, 4, 7);
+      ctx.restore();
+    } else if (g.type === 'missile') {
+      // Missile battery - dual launcher
+      ctx.fillStyle = '#0a1628';
+      ctx.fillRect(-13, -13, 26, 26);
+      ctx.strokeStyle = g.color; ctx.lineWidth = 1.5;
+      ctx.strokeRect(-13, -13, 26, 26);
+      // Launch tubes
+      ctx.save(); ctx.rotate(g.angle);
+      ctx.fillStyle = '#1a2a3a';
+      ctx.fillRect(4, -8, 14, 5);
+      ctx.fillRect(4, 3, 14, 5);
+      ctx.strokeStyle = g.color + '80'; ctx.lineWidth = 1;
+      ctx.strokeRect(4, -8, 14, 5);
+      ctx.strokeRect(4, 3, 14, 5);
+      ctx.restore();
+      // Center dot
+      ctx.beginPath(); ctx.arc(0, 0, 3, 0, Math.PI*2);
+      ctx.fillStyle = g.color; ctx.globalAlpha = pulse2; ctx.fill(); ctx.globalAlpha = 1;
+    } else if (g.type === 'nano') {
+      // Nano swarm - organic circle with orbiting dots
+      ctx.beginPath(); ctx.arc(0, 0, 12, 0, Math.PI*2);
+      ctx.fillStyle = '#0a1628'; ctx.fill();
+      ctx.strokeStyle = g.color; ctx.lineWidth = 1.5; ctx.stroke();
+      // Orbiting nano dots
+      for (let n = 0; n < 5; n++) {
+        const na = g.pulsePhase + n * Math.PI * 2 / 5;
+        const nr = 16 + Math.sin(g.pulsePhase*2 + n)*3;
+        ctx.beginPath();
+        ctx.arc(Math.cos(na)*nr, Math.sin(na)*nr, 2, 0, Math.PI*2);
+        ctx.fillStyle = g.color;
+        ctx.globalAlpha = 0.5 + Math.sin(g.pulsePhase + n)*0.3;
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      // Center symbol
+      ctx.beginPath(); ctx.arc(0, 0, 4, 0, Math.PI*2);
+      ctx.fillStyle = g.color + '60'; ctx.fill();
+    }
+
+    ctx.restore();
+  }
+
+  // Draw beams (tesla chains + cryo beams)
+  for (let b of G.beams) {
+    ctx.save();
+    ctx.strokeStyle = b.color;
+    ctx.lineWidth = b.width;
+    ctx.shadowBlur = 8;
+    ctx.shadowColor = b.color;
+    if (b.jagged) {
+      // Jagged lightning
+      ctx.beginPath();
+      ctx.moveTo(b.x1, b.y1);
+      const dx = b.x2 - b.x1, dy = b.y2 - b.y1;
+      const segs = 6;
+      for (let s = 1; s < segs; s++) {
+        const t = s / segs;
+        const jx = (Math.random()-0.5) * 16;
+        const jy = (Math.random()-0.5) * 16;
+        ctx.lineTo(b.x1 + dx*t + jx, b.y1 + dy*t + jy);
+      }
+      ctx.lineTo(b.x2, b.y2);
+      ctx.stroke();
+    } else {
+      ctx.beginPath();
+      ctx.moveTo(b.x1, b.y1);
+      ctx.lineTo(b.x2, b.y2);
+      ctx.stroke();
+      // Glow line
+      ctx.strokeStyle = b.color + '40';
+      ctx.lineWidth = b.width + 4;
+      ctx.beginPath();
+      ctx.moveTo(b.x1, b.y1);
+      ctx.lineTo(b.x2, b.y2);
+      ctx.stroke();
+    }
+    ctx.shadowBlur = 0;
+    ctx.restore();
+  }
+
+  // Draw DOT indicators on affected enemies
+  for (let dot of G.dotEffects) {
+    if (!dot.enemy.alive) continue;
+    const e = dot.enemy;
+    ctx.save();
+    ctx.translate(e.x, e.y);
+    ctx.beginPath();
+    ctx.arc(0, 0, e.size + 5, 0, Math.PI*2);
+    ctx.strokeStyle = dot.color + '50';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3,3]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
+
+  // Draw enemies
+  for (let e of G.enemies) {
+    if (!e.alive) continue;
+    const bob = Math.sin(e.phase) * 2;
+
+    ctx.save();
+    ctx.translate(e.x, e.y + bob);
+
+    // Slow effect
+    if (e.slowTimer > 0) {
+      ctx.beginPath();
+      ctx.arc(0, 0, e.size + 6, 0, Math.PI*2);
+      ctx.strokeStyle = '#b44aff40';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+
+    // Body glow
+    ctx.beginPath();
+    ctx.arc(0, 0, e.size + 4, 0, Math.PI*2);
+    ctx.fillStyle = e.color + '12';
+    ctx.fill();
+
+    // Body shape - diamond
+    ctx.beginPath();
+    ctx.moveTo(e.size, 0);
+    ctx.lineTo(0, -e.size * 0.7);
+    ctx.lineTo(-e.size * 0.7, 0);
+    ctx.lineTo(0, e.size * 0.7);
+    ctx.closePath();
+    ctx.fillStyle = e.color + '30';
+    ctx.fill();
+    ctx.strokeStyle = e.color;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Core
+    ctx.beginPath();
+    ctx.arc(0, 0, 3, 0, Math.PI*2);
+    ctx.fillStyle = e.color;
+    ctx.fill();
+
+    // Health bar
+    const barW = e.size * 2;
+    const barH = 3;
+    const barY = -e.size - 8;
+    ctx.fillStyle = 'rgba(255,255,255,0.1)';
+    ctx.fillRect(-barW/2, barY, barW, barH);
+    const hpPct = e.hp / e.maxHp;
+    const hpColor = hpPct > 0.5 ? '#39ff14' : hpPct > 0.25 ? '#ff6a00' : '#ff2d7b';
+    ctx.fillStyle = hpColor;
+    ctx.fillRect(-barW/2, barY, barW * hpPct, barH);
+
+    ctx.restore();
+  }
+
+  // Draw projectiles
+  for (let p of G.projectiles) {
+    ctx.save();
+    ctx.translate(p.x, p.y);
+
+    if (p.type === 'laser') {
+      ctx.beginPath();
+      ctx.arc(0, 0, 3, 0, Math.PI*2);
+      ctx.fillStyle = p.color;
+      ctx.shadowBlur = 8;
+      ctx.shadowColor = p.color;
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    } else if (p.type === 'plasma') {
+      ctx.beginPath();
+      ctx.arc(0, 0, 5, 0, Math.PI*2);
+      ctx.fillStyle = p.color + '80';
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(0, 0, 3, 0, Math.PI*2);
+      ctx.fillStyle = p.color;
+      ctx.shadowBlur = 12;
+      ctx.shadowColor = p.color;
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    } else if (p.type === 'emp') {
+      ctx.beginPath();
+      ctx.arc(0, 0, 6, 0, Math.PI*2);
+      ctx.strokeStyle = p.color;
+      ctx.lineWidth = 2;
+      ctx.shadowBlur = 10;
+      ctx.shadowColor = p.color;
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      ctx.beginPath();
+      ctx.arc(0, 0, 2, 0, Math.PI*2);
+      ctx.fillStyle = '#fff';
+      ctx.fill();
+    } else if (p.type === 'missile') {
+      // Rocket shape pointing in direction of travel
+      const angle = Math.atan2(p.vy, p.vx);
+      ctx.rotate(angle);
+      ctx.fillStyle = '#1a2a3a';
+      ctx.beginPath();
+      ctx.moveTo(8, 0); ctx.lineTo(-5, -4); ctx.lineTo(-3, 0); ctx.lineTo(-5, 4);
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = p.color; ctx.lineWidth = 1;
+      ctx.stroke();
+      // Exhaust
+      ctx.fillStyle = p.color;
+      ctx.shadowBlur = 6; ctx.shadowColor = p.color;
+      ctx.beginPath(); ctx.arc(-6, 0, 2 + Math.random()*1.5, 0, Math.PI*2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+
+    ctx.restore();
+  }
+
+  // Draw particles
+  for (let p of G.particles) {
+    const alpha = p.life / p.maxLife;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size * alpha, 0, Math.PI*2);
+    ctx.fillStyle = p.color;
+    ctx.globalAlpha = alpha;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  // Draw floating texts
+  ctx.font = 'bold 12px Share Tech Mono';
+  ctx.textAlign = 'center';
+  for (let ft of G.floatingTexts) {
+    const alpha = ft.life / ft.maxLife;
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = ft.color;
+    ctx.fillText(ft.text, ft.x, ft.y);
+  }
+  ctx.globalAlpha = 1;
+
+  // Spawn zone indicator
+  ctx.fillStyle = 'rgba(255,45,123,0.03)';
+  ctx.fillRect(0, 0, cellW, ch);
+  ctx.font = '9px Orbitron';
+  ctx.fillStyle = 'rgba(255,45,123,0.2)';
+  ctx.textAlign = 'center';
+  ctx.save();
+  ctx.translate(cellW*0.4, ch/2);
+  ctx.rotate(-Math.PI/2);
+  ctx.fillText('HOSTILE ENTRY ZONE', 0, 0);
+  ctx.restore();
+
+  // Scanlines
+  ctx.fillStyle = 'rgba(0,0,0,0.03)';
+  for (let sy = 0; sy < ch; sy += 3) {
+    ctx.fillRect(0, sy, cw, 1);
+  }
+
+  // Vignette
+  const vigGrad = ctx.createRadialGradient(cw/2, ch/2, ch*0.3, cw/2, ch/2, ch*0.9);
+  vigGrad.addColorStop(0, 'rgba(0,0,0,0)');
+  vigGrad.addColorStop(1, 'rgba(0,0,0,0.4)');
+  ctx.fillStyle = vigGrad;
+  ctx.fillRect(0, 0, cw, ch);
+
+  ctx.restore();
+}
+
+// ===== GAME LOOP =====
+function loop(time) {
+  const dt = Math.min((time - lastTime) / 1000, 0.05);
+  lastTime = time;
+  update(dt);
+  render();
+  animFrame = requestAnimationFrame(loop);
+}
+
+</script>
+</body>
+</html>
