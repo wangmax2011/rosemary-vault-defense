@@ -660,13 +660,16 @@ const TURRET_DATA = {
 };
 
 const ENEMY_DATA = {
-  scout:    { name:'Scout',    hp:50,   speed:120, bounty:30,  color:'#aaffaa', radius:6,  steal:100,  attackDmg:5,  attackRate:0.8 },
-  soldier:  { name:'Soldier',  hp:120,  speed:70,  bounty:60,  color:'#ffcc44', radius:8,  steal:200,  attackDmg:12, attackRate:1.0 },
-  tank:     { name:'Tank',     hp:350,  speed:40,  bounty:120, color:'#ff6644', radius:12, steal:400,  attackDmg:25, attackRate:1.2 },
-  speeder:  { name:'Speeder',  hp:30,   speed:180, bounty:25,  color:'#44ffff', radius:5,  steal:80,   attackDmg:3,  attackRate:0.5 },
-  shielded: { name:'Shielded', hp:150,  speed:65,  bounty:90,  color:'#8888ff', radius:9,  steal:250,  attackDmg:15, attackRate:1.0, shield:100 },
-  healer:   { name:'Healer',   hp:100,  speed:60,  bounty:80,  color:'#ff88ff', radius:7,  steal:150,  attackDmg:8,  attackRate:0.8, healRate:10, healRange:80 },
-  boss:     { name:'Boss',     hp:1000, speed:30,  bounty:500, color:'#ff2222', radius:18, steal:1000, attackDmg:50, attackRate:1.5 }
+  scout:    { name:'Scout',    hp:70,   speed:130, bounty:25,  color:'#aaffaa', radius:6,  steal:150,  attackDmg:6,  attackRate:0.7 },
+  soldier:  { name:'Soldier',  hp:160,  speed:80,  bounty:50,  color:'#ffcc44', radius:8,  steal:250,  attackDmg:15, attackRate:0.9 },
+  tank:     { name:'Tank',     hp:500,  speed:45,  bounty:100, color:'#ff6644', radius:12, steal:500,  attackDmg:35, attackRate:1.0 },
+  speeder:  { name:'Speeder',  hp:40,   speed:200, bounty:20,  color:'#44ffff', radius:5,  steal:120,  attackDmg:4,  attackRate:0.4 },
+  shielded: { name:'Shielded', hp:200,  speed:70,  bounty:75,  color:'#8888ff', radius:9,  steal:300,  attackDmg:18, attackRate:0.9, shield:150 },
+  healer:   { name:'Healer',   hp:140,  speed:65,  bounty:65,  color:'#ff88ff', radius:7,  steal:200,  attackDmg:10, attackRate:0.7, healRate:18, healRange:100 },
+  boss:     { name:'Boss',     hp:1500, speed:35,  bounty:400, color:'#ff2222', radius:18, steal:1500, attackDmg:70, attackRate:1.2 },
+  swarm:    { name:'Swarm',    hp:20,   speed:160, bounty:10,  color:'#ffff44', radius:4,  steal:60,   attackDmg:2,  attackRate:0.3 },
+  phantom:  { name:'Phantom',  hp:100,  speed:110, bounty:80,  color:'#44ff88', radius:7,  steal:350,  attackDmg:12, attackRate:0.8, phaseChance:0.4 },
+  juggernaut:{name:'Juggernaut',hp:2500,speed:20,  bounty:600, color:'#ff4400', radius:22, steal:2500, attackDmg:100,attackRate:1.5, armor:0.4 }
 };
 
 const COMMANDER_GROUPS = [
@@ -773,21 +776,26 @@ const UPGRADE_TREE = {
 };
 
 const WAVE_COMPOSITIONS = [
-  [{type:'scout',count:5}],
-  [{type:'scout',count:8}],
-  [{type:'scout',count:6},{type:'soldier',count:2}],
-  [{type:'scout',count:5},{type:'soldier',count:4},{type:'speeder',count:3}],
-  [{type:'soldier',count:6},{type:'tank',count:1},{type:'boss',count:1}],
-  [{type:'soldier',count:8},{type:'speeder',count:5}],
-  [{type:'soldier',count:5},{type:'shielded',count:3},{type:'healer',count:1}],
-  [{type:'tank',count:3},{type:'soldier',count:6},{type:'speeder',count:4}],
-  [{type:'shielded',count:5},{type:'healer',count:2},{type:'soldier',count:4}],
-  [{type:'tank',count:4},{type:'shielded',count:4},{type:'healer',count:2},{type:'boss',count:1}],
-  [{type:'scout',count:15},{type:'speeder',count:10}],
-  [{type:'tank',count:5},{type:'shielded',count:5},{type:'healer',count:3}],
-  [{type:'soldier',count:10},{type:'tank',count:4},{type:'speeder',count:8}],
-  [{type:'shielded',count:8},{type:'healer',count:4},{type:'tank',count:3}],
-  [{type:'tank',count:6},{type:'shielded',count:6},{type:'healer',count:3},{type:'boss',count:2}]
+  [{type:'scout',count:6}],
+  [{type:'scout',count:10},{type:'swarm',count:5}],
+  [{type:'scout',count:8},{type:'soldier',count:3}],
+  [{type:'scout',count:6},{type:'soldier',count:5},{type:'speeder',count:4}],
+  [{type:'soldier',count:8},{type:'tank',count:2},{type:'boss',count:1}],
+  [{type:'soldier',count:10},{type:'speeder',count:8},{type:'swarm',count:10}],
+  [{type:'soldier',count:6},{type:'shielded',count:4},{type:'healer',count:2}],
+  [{type:'tank',count:4},{type:'soldier',count:8},{type:'speeder',count:6},{type:'phantom',count:2}],
+  [{type:'shielded',count:6},{type:'healer',count:3},{type:'soldier',count:6},{type:'swarm',count:15}],
+  [{type:'tank',count:5},{type:'shielded',count:5},{type:'healer',count:3},{type:'boss',count:1},{type:'phantom',count:3}],
+  [{type:'swarm',count:30},{type:'speeder',count:12}],
+  [{type:'tank',count:6},{type:'shielded',count:6},{type:'healer',count:4},{type:'phantom',count:4}],
+  [{type:'soldier',count:12},{type:'tank',count:5},{type:'speeder',count:10},{type:'swarm',count:20}],
+  [{type:'shielded',count:10},{type:'healer',count:5},{type:'tank',count:4},{type:'phantom',count:5}],
+  [{type:'tank',count:8},{type:'shielded',count:8},{type:'healer',count:4},{type:'boss',count:2},{type:'phantom',count:3}],
+  [{type:'swarm',count:40},{type:'phantom',count:8},{type:'speeder',count:15}],
+  [{type:'tank',count:8},{type:'shielded',count:8},{type:'healer',count:6},{type:'phantom',count:6}],
+  [{type:'soldier',count:15},{type:'tank',count:8},{type:'speeder',count:12},{type:'swarm',count:25},{type:'phantom',count:5}],
+  [{type:'shielded',count:12},{type:'healer',count:6},{type:'tank',count:6},{type:'phantom',count:8},{type:'boss',count:2}],
+  [{type:'juggernaut',count:1},{type:'tank',count:10},{type:'shielded',count:10},{type:'healer',count:6},{type:'boss',count:2},{type:'phantom',count:5}]
 ];
 
 const STOCK_DATA = [
@@ -829,7 +837,9 @@ function getTurretCost(type){
   let base = TURRET_DATA[type].cost;
   let fx = getUpgradeEffects();
   let mult = 1 + fx.costMult;
-  if(game && game.blackMarketTimer > 0) mult -= 0.3;
+  // Wave inflation: costs increase 3% per wave
+  if(game && game.wave) mult *= (1 + game.wave * 0.03);
+  if(game && game.blackMarketTimer > 0) mult *= 0.7;
   return Math.max(50, Math.round(base * mult));
 }
 
@@ -839,11 +849,12 @@ function createGame(commanderId){
   let cdMult = 1 + fx.cdMult;
   return {
     commander: cmd,
-    credits: 10000 + fx.startCR,
+    credits: 6000 + fx.startCR,
     score: 0,
     wave: 0,
     waveActive: false,
     buildPhase: true,
+    autoWaveTimer: 0,
     enemies: [],
     turrets: [],
     projectiles: [],
@@ -922,10 +933,12 @@ function dist(x1,y1,x2,y2){ return Math.sqrt((x2-x1)**2+(y2-y1)**2); }
 function spawnWave(waveNum){
   let idx = Math.min(waveNum - 1, WAVE_COMPOSITIONS.length - 1);
   let comp = WAVE_COMPOSITIONS[idx];
-  let scaleFactor = waveNum > WAVE_COMPOSITIONS.length ? 1 + (waveNum - WAVE_COMPOSITIONS.length) * 0.15 : 1;
+  let scaleFactor = waveNum > WAVE_COMPOSITIONS.length ? 1 + (waveNum - WAVE_COMPOSITIONS.length) * 0.25 : 1;
+  if(waveNum > 25) scaleFactor *= 1.5;
+  if(waveNum > 30) scaleFactor *= 1.5;
   let queue = [];
   for(let group of comp){
-    let count = Math.ceil(group.count * (waveNum > WAVE_COMPOSITIONS.length ? 1 + (waveNum - WAVE_COMPOSITIONS.length)*0.1 : 1));
+    let count = Math.ceil(group.count * (waveNum > WAVE_COMPOSITIONS.length ? 1 + (waveNum - WAVE_COMPOSITIONS.length)*0.2 : 1));
     for(let i=0; i<count; i++){
       let base = ENEMY_DATA[group.type];
       let e = {
@@ -950,7 +963,9 @@ function spawnWave(waveNum){
         alive: true,
         attackDmg: base.attackDmg || 5,
         attackRate: base.attackRate || 1.0,
-        attackCooldown: 0
+        attackCooldown: 0,
+        phaseChance: base.phaseChance || 0,
+        armor: base.armor || 0
       };
       // spawn from random edge
       let side = Math.random()*4|0;
@@ -976,6 +991,10 @@ function updateEnemies(dt){
     // slow effect
     let spdMult = 1;
     if(e.slowTimer > 0){ spdMult = 0.4; e.slowTimer -= dt; }
+    // Enemies sense weakness - speed up when vault is low
+    if(game.credits < 2000) spdMult *= 1.15;
+    if(game.credits < 1000) spdMult *= 1.25;
+    if(game.credits < 500) spdMult *= 1.3;
     // DOT
     if(e.dotTimer > 0){ e.dotTimer -= dt; damageEnemy(e, e.dotDps * dt); }
     // move toward vault
@@ -1011,6 +1030,10 @@ function updateEnemies(dt){
         if(o===e || !o.alive) continue;
         if(dist(e.x,e.y,o.x,o.y) < e.healRange){
           o.hp = Math.min(o.maxHp, o.hp + e.healRate * dt);
+          // Also regenerate shields
+          if(o.maxShield > 0 && o.shield < o.maxShield){
+            o.shield = Math.min(o.maxShield, o.shield + e.healRate * 0.5 * dt);
+          }
         }
       }
     }
@@ -1055,11 +1078,18 @@ function updateEnemies(dt){
 
 function damageEnemy(e, dmg){
   if(!e.alive) return;
+  // Phantom phase dodge
+  if(e.phaseChance && Math.random() < e.phaseChance){
+    addFloatingText(e.x, e.y-10, 'PHASED', '#44ff88', 9);
+    return;
+  }
+  // Armor reduction
+  if(e.armor) dmg *= (1 - e.armor);
   if(e.shield > 0){
     let absorbed = Math.min(e.shield, dmg);
     e.shield -= absorbed;
     dmg -= absorbed;
-    if(absorbed > 0 && dmg === 0) addFloatingText(e.x, e.y-5, 'SHIELD', '#8888ff', 9);
+    if(absorbed > 0) addFloatingText(e.x, e.y-5, 'SHIELD', '#8888ff', 9);
   }
   e.hp -= dmg;
   if(e.hp <= 0){
@@ -1076,15 +1106,7 @@ function damageEnemy(e, dmg){
     // Enhanced death effect
     addParticles(e.x, e.y, e.color, 10);
     addParticles(e.x, e.y, '#ffffff', 4);
-    // Death ring
     addVFX('enemy_death_ring', e.x, e.y, {duration:0.6, color:e.color, radius:e.radius});
-    if(e.type === 'boss'){
-      addParticles(e.x, e.y, e.color, 25);
-      addParticles(e.x, e.y, '#ff6a00', 15);
-      addParticles(e.x, e.y, '#ffffff', 10);
-      triggerShake(8, 0.4);
-      addFloatingText(e.x, e.y-30, 'BOSS KILLED!', '#ff2d7b', 20);
-    }
     addFloatingText(e.x, e.y, '+'+bounty+' CR', '#39ff14', 11);
     game.killCombo++;
     game.killComboTimer = 2.0;
@@ -1094,6 +1116,13 @@ function damageEnemy(e, dmg){
     if(game.killCombo === 5) addFloatingText(e.x, e.y-35, 'RAMPAGE!', '#ff6a00', 16);
     if(game.killCombo === 10) addFloatingText(e.x, e.y-35, 'UNSTOPPABLE!', '#b44aff', 18);
     if(game.killCombo === 20) addFloatingText(e.x, e.y-35, 'GODLIKE!', '#00f0ff', 22);
+    if(e.type === 'boss' || e.type === 'juggernaut'){
+      addParticles(e.x, e.y, e.color, 25);
+      addParticles(e.x, e.y, '#ff6a00', 15);
+      addParticles(e.x, e.y, '#ffffff', 10);
+      triggerShake(8, 0.4);
+      addFloatingText(e.x, e.y-30, e.type==='juggernaut'?'JUGGERNAUT DOWN!':'BOSS KILLED!', '#ff2d7b', 20);
+    }
   }
 }
 
@@ -1810,6 +1839,14 @@ function drawVFX(){
 }
 
 function updateTimers(dt){
+  // Auto-wave countdown
+  if(game.buildPhase && !game.waveActive && game.autoWaveTimer > 0){
+    game.autoWaveTimer -= dt;
+    if(game.autoWaveTimer <= 0){
+      sendNextWave();
+      return;
+    }
+  }
   if(game.overclockTimer > 0) game.overclockTimer -= dt;
   if(game.marketSurgeTimer > 0) game.marketSurgeTimer -= dt;
   if(game.salvageTimer > 0) game.salvageTimer -= dt;
@@ -1854,7 +1891,7 @@ function spawnEnemies(dt){
   if(game.spawnQueue.length === 0) return;
   game.spawnTimer -= dt;
   if(game.spawnTimer <= 0){
-    game.spawnTimer = 0.4;
+    game.spawnTimer = 0.25;
     let e = game.spawnQueue.shift();
     if(e) game.enemies.push(e);
   }
@@ -1864,6 +1901,7 @@ function checkWaveEnd(){
   if(game.waveActive && game.enemiesRemaining <= 0 && game.spawnQueue.length === 0){
     game.waveActive = false;
     game.buildPhase = true;
+    game.autoWaveTimer = 25; // 25 seconds to prepare
     updateStockPrices();
     if(game.stockMarketOpen) updateStockMarketUI();
     // compound interest
@@ -1888,8 +1926,8 @@ function updateStockPrices(){
     // Volatility spike chance (5% crash, 5% boom)
     let event = Math.random();
     let eventMult = 1;
-    if(event < 0.05){ eventMult = 0.6 + Math.random()*0.2; s.trend = -0.2; } // crash
-    else if(event > 0.95){ eventMult = 1.3 + Math.random()*0.3; s.trend = 0.2; } // boom
+    if(event < 0.08){ eventMult = 0.6 + Math.random()*0.2; s.trend = -0.2; } // crash
+    else if(event > 0.94){ eventMult = 1.3 + Math.random()*0.3; s.trend = 0.2; } // boom
 
     let change = (s.trend + (Math.random()-0.5)*s.volatility) * s.price * eventMult;
     s.price = Math.max(10, Math.round(s.price + change));
@@ -3232,8 +3270,17 @@ function sendNextWave(){
 function updateHUD(){
   if(!game) return;
   document.getElementById('wave-display').textContent = 'WAVE ' + (game.wave || 1);
-  document.getElementById('wave-status').textContent = game.waveActive ? 'INCOMING' : 'BUILD PHASE';
-  document.getElementById('wave-status').style.color = game.waveActive ? '#ff6a00' : '#39ff14';
+  if(game.waveActive){
+    document.getElementById('wave-status').textContent = 'INCOMING';
+    document.getElementById('wave-status').style.color = '#ff6a00';
+  } else if(game.autoWaveTimer > 0){
+    let secs = Math.ceil(game.autoWaveTimer);
+    document.getElementById('wave-status').textContent = 'NEXT WAVE IN ' + secs + 's';
+    document.getElementById('wave-status').style.color = secs <= 5 ? '#ff2d7b' : '#39ff14';
+  } else {
+    document.getElementById('wave-status').textContent = 'BUILD PHASE';
+    document.getElementById('wave-status').style.color = '#39ff14';
+  }
   let groupColor = COMMANDER_GROUPS.find(g=>g.id===game.commander.group).color;
   document.getElementById('commander-label').textContent = game.commander.name + ' - ' + game.commander.role;
   document.getElementById('commander-label').style.color = groupColor;
