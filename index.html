@@ -1317,32 +1317,59 @@ function drawVFX(){
 
     switch(v.type){
       case 'orbital_strike': {
-        // Beam from top of screen narrowing to target
+        // Satellite in orbit fires beam down to target
         let beamWidth = 60 * (1 - p*0.7);
         let beamAlpha = Math.max(0, 1 - p*1.5);
-        // Vertical beam
-        let grd = ctx.createLinearGradient(v.x, 0, v.x, v.y);
-        grd.addColorStop(0, 'rgba(0,240,255,0)');
+        // Draw satellite at top of screen
+        let satX = v.x + Math.sin(p*4)*15;
+        let satY = 25;
+        let satA = p < 0.1 ? p*10 : Math.max(0, 1-p*1.2);
+        ctx.save(); ctx.translate(satX, satY);
+        // Solar panels (left)
+        ctx.fillStyle = 'rgba(30,80,180,'+satA*0.9+')';
+        ctx.fillRect(-28,-4,14,8);
+        ctx.strokeStyle = 'rgba(0,200,255,'+satA*0.6+')'; ctx.lineWidth=0.5;
+        ctx.strokeRect(-28,-4,14,8);
+        for(let i=0;i<3;i++){ ctx.beginPath(); ctx.moveTo(-28+i*4.7,-4); ctx.lineTo(-28+i*4.7,4); ctx.stroke(); }
+        // Solar panels (right)
+        ctx.fillRect(14,-4,14,8);
+        ctx.strokeRect(14,-4,14,8);
+        for(let i=0;i<3;i++){ ctx.beginPath(); ctx.moveTo(14+i*4.7,-4); ctx.lineTo(14+i*4.7,4); ctx.stroke(); }
+        // Main body
+        ctx.fillStyle = 'rgba(180,190,200,'+satA+')';
+        ctx.fillRect(-7,-5,14,10);
+        ctx.strokeStyle = 'rgba(0,240,255,'+satA*0.7+')'; ctx.lineWidth=0.8;
+        ctx.strokeRect(-7,-5,14,10);
+        // Antenna dish
+        ctx.beginPath(); ctx.arc(0,7,4, 0, Math.PI); ctx.strokeStyle='rgba(200,220,240,'+satA+')'; ctx.lineWidth=1; ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0,7); ctx.lineTo(0,11); ctx.stroke();
+        // Charging glow
+        let glowR = 6+Math.sin(now/80)*2;
+        let sg = ctx.createRadialGradient(0,5,0,0,5,glowR);
+        sg.addColorStop(0,'rgba(0,240,255,'+satA*0.6+')');
+        sg.addColorStop(1,'transparent');
+        ctx.fillStyle = sg; ctx.beginPath(); ctx.arc(0,5,glowR,0,Math.PI*2); ctx.fill();
+        ctx.restore();
+        // Vertical beam from satellite to target
+        let grd = ctx.createLinearGradient(v.x, satY+12, v.x, v.y);
+        grd.addColorStop(0, 'rgba(0,240,255,'+beamAlpha*0.5+')');
         grd.addColorStop(0.3, 'rgba(0,240,255,'+beamAlpha*0.3+')');
         grd.addColorStop(0.8, 'rgba(0,240,255,'+beamAlpha*0.8+')');
         grd.addColorStop(1, 'rgba(200,255,255,'+beamAlpha+')');
         ctx.fillStyle = grd;
         ctx.beginPath();
-        ctx.moveTo(v.x - beamWidth*2, 0);
-        ctx.lineTo(v.x + beamWidth*2, 0);
+        ctx.moveTo(satX - 8, satY+12);
+        ctx.lineTo(satX + 8, satY+12);
         ctx.lineTo(v.x + beamWidth*0.3, v.y);
         ctx.lineTo(v.x - beamWidth*0.3, v.y);
-        ctx.closePath();
-        ctx.fill();
+        ctx.closePath(); ctx.fill();
         // Impact rings
         if(p < 0.8){
           for(let i=0;i<3;i++){
             let r = (v.radius||80) * (0.3 + p*1.2) + i*15;
             let a = beamAlpha * (1-i*0.3);
             ctx.beginPath(); ctx.arc(v.x, v.y, r, 0, Math.PI*2);
-            ctx.strokeStyle = 'rgba(0,240,255,'+a+')';
-            ctx.lineWidth = 3-i;
-            ctx.stroke();
+            ctx.strokeStyle = 'rgba(0,240,255,'+a+')'; ctx.lineWidth = 3-i; ctx.stroke();
           }
         }
         // Flash on impact
@@ -1357,34 +1384,89 @@ function drawVFX(){
       } break;
 
       case 'ion_sweep': {
-        // Horizontal beam sweeping across screen
+        // Orbital ion cannon platform sweeps beam across screen
         let sweepX = v.x + (game.mapW * (p - 0.5)) * v.dir;
         let beamH = 30;
         let a = p < 0.1 ? p*10 : p > 0.8 ? (1-p)*5 : 1;
+        // Orbital platform above the beam
+        let platX = sweepX;
+        let platY = 18;
+        ctx.save(); ctx.translate(platX, platY); ctx.rotate(v.dir > 0 ? 0.1 : -0.1);
+        // Large solar array left
+        ctx.fillStyle = 'rgba(25,60,150,'+a*0.7+')';
+        ctx.fillRect(-35,-3,16,6);
+        ctx.strokeStyle = 'rgba(0,200,255,'+a*0.3+')'; ctx.lineWidth=0.4;
+        for(let i=0;i<4;i++){ ctx.beginPath(); ctx.moveTo(-35+i*4,-3); ctx.lineTo(-35+i*4,3); ctx.stroke(); }
+        // Large solar array right
+        ctx.fillRect(19,-3,16,6);
+        for(let i=0;i<4;i++){ ctx.beginPath(); ctx.moveTo(19+i*4,-3); ctx.lineTo(19+i*4,3); ctx.stroke(); }
+        // Main hull
+        ctx.fillStyle = 'rgba(120,130,140,'+a+')';
+        ctx.fillRect(-10,-6,20,12);
+        ctx.strokeStyle = 'rgba(0,240,255,'+a*0.5+')'; ctx.lineWidth=0.6;
+        ctx.strokeRect(-10,-6,20,12);
+        // Ion emitter (glowing circle underneath)
+        let emR = 5+Math.sin(now/50)*1.5;
+        let eg = ctx.createRadialGradient(0,8,0,0,8,emR);
+        eg.addColorStop(0,'rgba(0,240,255,'+a+')');
+        eg.addColorStop(0.5,'rgba(0,180,255,'+a*0.5+')');
+        eg.addColorStop(1,'transparent');
+        ctx.fillStyle = eg; ctx.beginPath(); ctx.arc(0,8,emR,0,Math.PI*2); ctx.fill();
+        // Heat radiator fins
+        ctx.fillStyle = 'rgba(160,60,60,'+a*0.6+')';
+        ctx.fillRect(-12,-8,4,2); ctx.fillRect(8,-8,4,2);
+        ctx.restore();
+        // Beam from platform down
         let grd = ctx.createLinearGradient(sweepX-40, 0, sweepX+40, 0);
         grd.addColorStop(0, 'rgba(0,240,255,0)');
         grd.addColorStop(0.5, 'rgba(0,240,255,'+a*0.7+')');
         grd.addColorStop(1, 'rgba(0,240,255,0)');
         ctx.fillStyle = grd;
-        ctx.fillRect(sweepX-40, 0, 80, game.mapH);
+        ctx.fillRect(sweepX-40, platY+12, 80, game.mapH-platY-12);
         // Core bright line
         ctx.beginPath();
-        ctx.moveTo(sweepX, 0); ctx.lineTo(sweepX, game.mapH);
+        ctx.moveTo(sweepX, platY+12); ctx.lineTo(sweepX, game.mapH);
         ctx.strokeStyle = 'rgba(200,255,255,'+a*0.9+')'; ctx.lineWidth = 2; ctx.stroke();
       } break;
 
       case 'satellite_hit': {
-        // Small orbital strike
+        // Small satellite visible above firing laser down
         let a = p < 0.2 ? p*5 : Math.max(0,1-p*1.2);
-        // Beam
-        let grd = ctx.createLinearGradient(v.x, v.y-200, v.x, v.y);
-        grd.addColorStop(0, 'rgba(0,240,255,0)');
-        grd.addColorStop(1, 'rgba(0,240,255,'+a*0.6+')');
+        // Mini satellite orbiting above target
+        let satOrbAngle = p*6;
+        let satX = v.x + Math.sin(satOrbAngle)*20;
+        let satY = v.y - 180 + Math.cos(satOrbAngle)*8;
+        ctx.save(); ctx.translate(satX, satY); ctx.rotate(satOrbAngle*0.3);
+        // Solar panels
+        ctx.fillStyle = 'rgba(30,70,160,'+a*0.8+')';
+        ctx.fillRect(-16,-2,8,4); ctx.fillRect(8,-2,8,4);
+        ctx.strokeStyle = 'rgba(0,200,255,'+a*0.4+')'; ctx.lineWidth=0.4;
+        ctx.strokeRect(-16,-2,8,4); ctx.strokeRect(8,-2,8,4);
+        // Body
+        ctx.fillStyle = 'rgba(160,170,180,'+a+')';
+        ctx.fillRect(-4,-3,8,6);
+        // Dish pointing down
+        ctx.beginPath(); ctx.arc(0,5,3,0,Math.PI);
+        ctx.strokeStyle = 'rgba(200,220,240,'+a+')'; ctx.lineWidth=0.8; ctx.stroke();
+        // Firing glow
+        let glw = 4+Math.sin(now/60)*2;
+        let gg = ctx.createRadialGradient(0,5,0,0,5,glw);
+        gg.addColorStop(0,'rgba(0,240,255,'+a*0.8+')');
+        gg.addColorStop(1,'transparent');
+        ctx.fillStyle = gg; ctx.beginPath(); ctx.arc(0,5,glw,0,Math.PI*2); ctx.fill();
+        ctx.restore();
+        // Beam from satellite to target
+        let grd = ctx.createLinearGradient(satX, satY+6, v.x, v.y);
+        grd.addColorStop(0, 'rgba(0,240,255,'+a*0.4+')');
+        grd.addColorStop(1, 'rgba(0,240,255,'+a*0.7+')');
         ctx.fillStyle = grd;
         ctx.beginPath();
-        ctx.moveTo(v.x-15, v.y-200); ctx.lineTo(v.x+15, v.y-200);
+        ctx.moveTo(satX-3, satY+6); ctx.lineTo(satX+3, satY+6);
         ctx.lineTo(v.x+4, v.y); ctx.lineTo(v.x-4, v.y);
         ctx.closePath(); ctx.fill();
+        // Bright center line
+        ctx.beginPath(); ctx.moveTo(satX, satY+6); ctx.lineTo(v.x, v.y);
+        ctx.strokeStyle = 'rgba(200,255,255,'+a*0.5+')'; ctx.lineWidth=1; ctx.stroke();
         // Impact
         let ir = 30 * p;
         ctx.beginPath(); ctx.arc(v.x, v.y, ir, 0, Math.PI*2);
@@ -1453,41 +1535,133 @@ function drawVFX(){
       } break;
 
       case 'airstrike_line': {
-        // Carpet bomb line with sequential explosions
-        let a = p < 0.1 ? p*10 : Math.max(0, 1-p*1.2);
+        // Fighter jet flies along the bomb line dropping bombs
+        let a = p < 0.1 ? p*10 : Math.max(0, 1-p*1.1);
         let dx = v.ex - v.sx, dy = v.ey - v.sy;
-        // Trail of explosions along line
-        let numBombs = 8;
+        let lineLen = Math.sqrt(dx*dx+dy*dy)||1;
+        let lineAngle = Math.atan2(dy, dx);
+        // Jet position along the line
+        let jetP = Math.min(1, p*1.8); // jet moves faster than effect fades
+        let jetX = v.sx + dx*jetP;
+        let jetY = v.sy + dy*jetP;
+        // Draw the jet
+        if(jetP < 1){
+          ctx.save(); ctx.translate(jetX, jetY); ctx.rotate(lineAngle);
+          // Engine afterburner
+          let abLen = 12+Math.sin(now/40)*4;
+          let abGrd = ctx.createLinearGradient(-18,0,-18-abLen,0);
+          abGrd.addColorStop(0,'rgba(255,200,50,'+a*0.8+')');
+          abGrd.addColorStop(0.5,'rgba(255,100,0,'+a*0.4+')');
+          abGrd.addColorStop(1,'transparent');
+          ctx.fillStyle = abGrd;
+          ctx.beginPath(); ctx.moveTo(-18,-3); ctx.lineTo(-18-abLen,0); ctx.lineTo(-18,3); ctx.fill();
+          // Fuselage
+          ctx.beginPath();
+          ctx.moveTo(18,0); ctx.lineTo(8,-4); ctx.lineTo(-6,-3.5);
+          ctx.lineTo(-16,-2); ctx.lineTo(-18,0); ctx.lineTo(-16,2);
+          ctx.lineTo(-6,3.5); ctx.lineTo(8,4); ctx.closePath();
+          ctx.fillStyle = 'rgba(60,50,40,'+a+')'; ctx.fill();
+          ctx.strokeStyle = 'rgba(255,106,0,'+a*0.8+')'; ctx.lineWidth = 0.8; ctx.stroke();
+          // Wings (swept back)
+          ctx.beginPath();
+          ctx.moveTo(2,-4); ctx.lineTo(-6,-16); ctx.lineTo(-10,-15); ctx.lineTo(-6,-4);
+          ctx.closePath();
+          ctx.fillStyle = 'rgba(50,40,30,'+a+')'; ctx.fill();
+          ctx.strokeStyle = 'rgba(255,106,0,'+a*0.5+')'; ctx.lineWidth = 0.6; ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(2,4); ctx.lineTo(-6,16); ctx.lineTo(-10,15); ctx.lineTo(-6,4);
+          ctx.closePath();
+          ctx.fillStyle = 'rgba(50,40,30,'+a+')'; ctx.fill();
+          ctx.stroke();
+          // Tail fin
+          ctx.beginPath();
+          ctx.moveTo(-14,-2); ctx.lineTo(-18,-8); ctx.lineTo(-20,-7); ctx.lineTo(-16,-2);
+          ctx.closePath();
+          ctx.fillStyle = 'rgba(50,40,30,'+a+')'; ctx.fill();
+          // Cockpit
+          ctx.beginPath(); ctx.ellipse(10,0,4,2,0,0,Math.PI*2);
+          ctx.fillStyle = 'rgba(255,220,150,'+a*0.5+')'; ctx.fill();
+          ctx.restore();
+        }
+        // Trail of explosions behind the jet
+        let numBombs = 10;
         for(let i=0;i<numBombs;i++){
           let bp = i/numBombs;
-          if(p > bp*0.7){
-            let ba = Math.max(0, a - bp*0.3);
+          if(jetP > bp){
+            let bombAge = (jetP-bp)*1.5;
+            let ba = Math.max(0, a*(1-bombAge));
             let bx = v.sx + dx*bp, by = v.sy + dy*bp;
-            let br = 20 + (p-bp*0.7)*60;
+            let br = 15 + bombAge*50;
             let bg = ctx.createRadialGradient(bx,by,0,bx,by,br);
-            bg.addColorStop(0,'rgba(255,150,0,'+ba*0.6+')');
-            bg.addColorStop(0.5,'rgba(255,80,0,'+ba*0.3+')');
+            bg.addColorStop(0,'rgba(255,200,80,'+ba*0.7+')');
+            bg.addColorStop(0.3,'rgba(255,100,0,'+ba*0.5+')');
+            bg.addColorStop(0.7,'rgba(200,50,0,'+ba*0.2+')');
             bg.addColorStop(1,'transparent');
             ctx.fillStyle = bg;
             ctx.beginPath(); ctx.arc(bx,by,br,0,Math.PI*2); ctx.fill();
+            // Smoke ring
+            ctx.beginPath(); ctx.arc(bx,by,br*1.3,0,Math.PI*2);
+            ctx.strokeStyle = 'rgba(100,80,60,'+ba*0.3+')'; ctx.lineWidth = 2; ctx.stroke();
           }
         }
-        // Jet trail
-        ctx.beginPath(); ctx.moveTo(v.sx,v.sy); ctx.lineTo(v.ex,v.ey);
-        ctx.strokeStyle = 'rgba(255,106,0,'+a*0.4+')'; ctx.lineWidth = 4;
-        ctx.setLineDash([10,5]); ctx.stroke(); ctx.setLineDash([]);
+        // Vapor trail behind jet
+        if(jetP < 1){
+          ctx.beginPath();
+          ctx.moveTo(v.sx, v.sy); ctx.lineTo(jetX, jetY);
+          ctx.strokeStyle = 'rgba(200,200,200,'+a*0.15+')'; ctx.lineWidth = 6; ctx.stroke();
+          ctx.strokeStyle = 'rgba(255,255,255,'+a*0.08+')'; ctx.lineWidth = 12; ctx.stroke();
+        }
       } break;
 
       case 'artillery_shell': {
-        // Shell arcing down
+        // Artillery cannon at bottom-right fires shell in an arc
         let a = p < 0.5 ? 1 : Math.max(0,(1-p)*2);
-        let shellY = v.y - 150*(1-p*2)*(1-p*2)*Math.sign(0.5-p);
+        // Draw artillery cannon at bottom edge
+        let cannonX = game.mapW - 60, cannonY = game.mapH - 20;
+        let aimAngle = Math.atan2(v.y - cannonY, v.x - cannonX);
+        let cannonA = p < 0.6 ? 1 : Math.max(0,(1-p)*2.5);
+        ctx.save(); ctx.translate(cannonX, cannonY); ctx.rotate(aimAngle);
+        // Barrel
+        ctx.fillStyle = 'rgba(80,90,80,'+cannonA+')';
+        ctx.fillRect(0,-3,30,6);
+        ctx.strokeStyle = 'rgba(120,130,100,'+cannonA+')'; ctx.lineWidth=0.8; ctx.strokeRect(0,-3,30,6);
+        // Muzzle brake
+        ctx.fillStyle = 'rgba(60,60,50,'+cannonA+')';
+        ctx.fillRect(28,-5,5,10);
+        // Muzzle flash (during firing)
+        if(p < 0.15){
+          let mfA = (0.15-p)*6.6;
+          let mfR = 12+Math.random()*5;
+          let mfg = ctx.createRadialGradient(33,0,0,33,0,mfR);
+          mfg.addColorStop(0,'rgba(255,240,150,'+mfA+')');
+          mfg.addColorStop(0.5,'rgba(255,150,50,'+mfA*0.5+')');
+          mfg.addColorStop(1,'transparent');
+          ctx.fillStyle = mfg; ctx.beginPath(); ctx.arc(33,0,mfR,0,Math.PI*2); ctx.fill();
+        }
+        ctx.restore();
+        // Wheels
+        ctx.beginPath(); ctx.arc(cannonX-5, cannonY+3, 6, 0, Math.PI*2);
+        ctx.fillStyle = 'rgba(50,50,40,'+cannonA+')'; ctx.fill();
+        ctx.strokeStyle = 'rgba(80,80,70,'+cannonA+')'; ctx.lineWidth=1; ctx.stroke();
+        ctx.beginPath(); ctx.arc(cannonX+8, cannonY+3, 6, 0, Math.PI*2);
+        ctx.fill(); ctx.stroke();
+        // Base platform
+        ctx.fillStyle = 'rgba(70,75,65,'+cannonA+')';
+        ctx.fillRect(cannonX-12, cannonY, 24, 5);
+        // Shell arcing through the air
         if(p < 0.5){
-          // Shell falling
-          ctx.beginPath();
-          ctx.arc(v.x + Math.sin(p*8)*3, v.y - 100*(1-p*2), 3, 0, Math.PI*2);
-          ctx.fillStyle = 'rgba(255,200,100,'+a+')';
-          ctx.fill();
+          let shellP = p*2; // 0->1 during flight
+          let sx = cannonX + (v.x-cannonX)*shellP;
+          let sy = cannonY + (v.y-cannonY)*shellP - 120*Math.sin(shellP*Math.PI);
+          let shellAngle = Math.atan2((v.y-cannonY)-120*Math.cos(shellP*Math.PI)*Math.PI, v.x-cannonX);
+          ctx.save(); ctx.translate(sx,sy); ctx.rotate(shellAngle);
+          // Shell body
+          ctx.fillStyle = 'rgba(200,180,100,'+a+')';
+          ctx.beginPath(); ctx.moveTo(6,0); ctx.lineTo(-4,-2.5); ctx.lineTo(-4,2.5); ctx.closePath(); ctx.fill();
+          // Tracer trail
+          ctx.beginPath(); ctx.moveTo(-4,0); ctx.lineTo(-12,0);
+          ctx.strokeStyle = 'rgba(255,200,50,'+a*0.6+')'; ctx.lineWidth=2; ctx.stroke();
+          ctx.restore();
         }
         // Explosion on impact
         if(p > 0.4){
@@ -1500,13 +1674,73 @@ function drawVFX(){
           eg.addColorStop(1,'transparent');
           ctx.fillStyle = eg;
           ctx.beginPath(); ctx.arc(v.x,v.y,er,0,Math.PI*2); ctx.fill();
+          // Dirt/debris ring
+          ctx.beginPath(); ctx.arc(v.x,v.y,er*1.2,0,Math.PI*2);
+          ctx.strokeStyle='rgba(139,119,101,'+ea*0.4+')'; ctx.lineWidth=3; ctx.stroke();
         }
       } break;
 
       case 'napalm_drop': {
-        // Fiery impact with rising flames
+        // Bomber plane flies over and drops napalm canisters
         let a = p < 0.15 ? p*7 : Math.max(0, 1-p);
-        // Fire columns
+        // Bomber plane flying across
+        let bomberP = Math.min(1, p*2.5);
+        let bomberX = -40 + (game.mapW+80)*bomberP;
+        let bomberY = v.y - 80;
+        if(bomberP < 1){
+          ctx.save(); ctx.translate(bomberX, bomberY);
+          // Engine smoke
+          let smokeA = a*0.15;
+          for(let s=0;s<3;s++){
+            ctx.beginPath(); ctx.arc(-25-s*12+Math.random()*3, Math.random()*4-2, 4+s*2, 0, Math.PI*2);
+            ctx.fillStyle = 'rgba(100,100,100,'+smokeA+')'; ctx.fill();
+          }
+          // Wings (wide bomber)
+          ctx.fillStyle = 'rgba(60,65,55,'+a+')';
+          ctx.beginPath(); ctx.moveTo(5,-3); ctx.lineTo(-8,-24); ctx.lineTo(-14,-23); ctx.lineTo(-8,-3); ctx.closePath(); ctx.fill();
+          ctx.beginPath(); ctx.moveTo(5,3); ctx.lineTo(-8,24); ctx.lineTo(-14,23); ctx.lineTo(-8,3); ctx.closePath(); ctx.fill();
+          // Fuselage (fat bomber body)
+          ctx.beginPath();
+          ctx.moveTo(22,0); ctx.lineTo(10,-5); ctx.lineTo(-8,-4.5); ctx.lineTo(-20,-3);
+          ctx.lineTo(-22,0); ctx.lineTo(-20,3); ctx.lineTo(-8,4.5); ctx.lineTo(10,5); ctx.closePath();
+          ctx.fillStyle = 'rgba(55,60,50,'+a+')'; ctx.fill();
+          ctx.strokeStyle = 'rgba(255,100,0,'+a*0.4+')'; ctx.lineWidth=0.6; ctx.stroke();
+          // Engine nacelles
+          ctx.fillStyle = 'rgba(50,50,45,'+a+')';
+          ctx.fillRect(-6,-17,8,4); ctx.fillRect(-6,13,8,4);
+          // Bomb bay doors (open)
+          ctx.strokeStyle = 'rgba(80,80,70,'+a+')'; ctx.lineWidth=0.5;
+          ctx.beginPath(); ctx.moveTo(-2,4.5); ctx.lineTo(-2,7); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(4,4.5); ctx.lineTo(4,7); ctx.stroke();
+          // Tail
+          ctx.beginPath(); ctx.moveTo(-18,-3); ctx.lineTo(-24,-10); ctx.lineTo(-26,-9); ctx.lineTo(-20,-3); ctx.closePath();
+          ctx.fillStyle = 'rgba(55,60,50,'+a+')'; ctx.fill();
+          // Cockpit
+          ctx.beginPath(); ctx.ellipse(14,0,5,3,0,0,Math.PI*2);
+          ctx.fillStyle = 'rgba(200,220,180,'+a*0.4+')'; ctx.fill();
+          ctx.restore();
+          // Falling napalm canisters
+          if(bomberP > 0.2){
+            let canP = (bomberP-0.2)/0.8;
+            for(let c=0;c<3;c++){
+              let cDelay = c*0.15;
+              if(canP > cDelay){
+                let cFall = Math.min(1,(canP-cDelay)/0.5);
+                let cx = bomberX - 30 - c*20;
+                let cy = bomberY + 10 + cFall*cFall*90;
+                if(cFall < 1){
+                  ctx.save(); ctx.translate(cx,cy); ctx.rotate(cFall*0.5);
+                  ctx.fillStyle = 'rgba(100,80,60,'+a+')';
+                  ctx.fillRect(-3,-6,6,12);
+                  ctx.fillStyle = 'rgba(255,80,0,'+a*0.5+')';
+                  ctx.fillRect(-2,6,4,3);
+                  ctx.restore();
+                }
+              }
+            }
+          }
+        }
+        // Fire columns on ground
         for(let i=0;i<8;i++){
           let fa = Math.PI*2/8*i + now/500;
           let fr = (v.radius||60) * (0.3 + p*0.6);
@@ -1526,8 +1760,60 @@ function drawVFX(){
       } break;
 
       case 'howitzer_impact': {
-        // Massive single explosion
+        // Massive howitzer fires from off-screen with visible recoil
         let a = p < 0.1 ? p*10 : Math.max(0, 1-p);
+        // Draw howitzer at left edge
+        let hwX = 30, hwY = game.mapH - 30;
+        let hwAngle = Math.atan2(v.y - hwY, v.x - hwX);
+        let recoil = p < 0.1 ? (0.1-p)*80 : 0;
+        let hwA = p < 0.7 ? 1 : Math.max(0,(1-p)*3.3);
+        ctx.save(); ctx.translate(hwX, hwY); ctx.rotate(hwAngle);
+        // Barrel (long, thick)
+        ctx.fillStyle = 'rgba(70,75,65,'+hwA+')';
+        ctx.fillRect(8-recoil,-5,40,10);
+        // Barrel reinforcement rings
+        ctx.strokeStyle = 'rgba(100,105,90,'+hwA+')'; ctx.lineWidth=1;
+        for(let i=0;i<3;i++){ let rx=15+i*10-recoil; ctx.beginPath(); ctx.moveTo(rx,-5); ctx.lineTo(rx,5); ctx.stroke(); }
+        // Muzzle
+        ctx.fillStyle = 'rgba(50,55,45,'+hwA+')';
+        ctx.fillRect(46-recoil,-6,6,12);
+        // Muzzle flash
+        if(p < 0.12){
+          let mfA = (0.12-p)*8.3;
+          let mfR = 20+Math.random()*8;
+          let mfg = ctx.createRadialGradient(52-recoil,0,0,52-recoil,0,mfR);
+          mfg.addColorStop(0,'rgba(255,250,180,'+mfA+')');
+          mfg.addColorStop(0.4,'rgba(255,180,50,'+mfA*0.6+')');
+          mfg.addColorStop(1,'transparent');
+          ctx.fillStyle = mfg; ctx.beginPath(); ctx.arc(52-recoil,0,mfR,0,Math.PI*2); ctx.fill();
+          // Smoke blast
+          for(let s=0;s<4;s++){
+            let sa = (Math.random()-0.5)*1.2;
+            let sd = 20+Math.random()*15;
+            ctx.beginPath(); ctx.arc(52-recoil+Math.cos(sa)*sd, Math.sin(sa)*sd, 5+Math.random()*4, 0, Math.PI*2);
+            ctx.fillStyle = 'rgba(150,140,120,'+mfA*0.3+')'; ctx.fill();
+          }
+        }
+        ctx.restore();
+        // Howitzer base/platform
+        ctx.fillStyle = 'rgba(60,65,55,'+hwA+')';
+        ctx.fillRect(hwX-15, hwY+2, 30, 6);
+        // Wheels
+        ctx.beginPath(); ctx.arc(hwX-10, hwY+8, 7, 0, Math.PI*2);
+        ctx.fillStyle = 'rgba(40,40,35,'+hwA+')'; ctx.fill();
+        ctx.strokeStyle = 'rgba(70,70,60,'+hwA+')'; ctx.lineWidth=1; ctx.stroke();
+        ctx.beginPath(); ctx.arc(hwX+10, hwY+8, 7, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+        // Shell trajectory (fast arc)
+        if(p < 0.3){
+          let sp = p/0.3;
+          let sx = hwX + (v.x-hwX)*sp;
+          let sy = hwY + (v.y-hwY)*sp - 80*Math.sin(sp*Math.PI);
+          ctx.beginPath(); ctx.arc(sx,sy,4,0,Math.PI*2);
+          ctx.fillStyle = 'rgba(255,220,120,'+a+')'; ctx.fill();
+          // Trail
+          ctx.beginPath(); ctx.moveTo(hwX,hwY); ctx.quadraticCurveTo(sx,sy-40,sx,sy);
+          ctx.strokeStyle = 'rgba(255,200,100,'+a*0.2+')'; ctx.lineWidth=2; ctx.stroke();
+        }
         let r = 20 + p*80;
         // Shockwave ring
         ctx.beginPath(); ctx.arc(v.x,v.y,r*1.5,0,Math.PI*2);
@@ -1540,7 +1826,6 @@ function drawVFX(){
         fg.addColorStop(1,'transparent');
         ctx.fillStyle = fg;
         ctx.beginPath(); ctx.arc(v.x,v.y,r,0,Math.PI*2); ctx.fill();
-        // Screen shake simulation via slight context jitter
         if(p < 0.2){
           let shake = (0.2-p)*30;
           ctx.translate(Math.sin(now*0.1)*shake, Math.cos(now*0.13)*shake);
@@ -1548,9 +1833,40 @@ function drawVFX(){
       } break;
 
       case 'cluster_bomb': {
-        // Multiple small explosions popping sequentially
+        // Cargo plane drops cluster munitions
         let a = Math.max(0, 1-p);
         let i = v.index || 0;
+        // Cargo plane flies overhead (only drawn for first cluster index)
+        if(i === 0){
+          let planeP = Math.min(1, p*2);
+          let planeX = game.mapW + 40 - (game.mapW+80)*planeP;
+          let planeY = v.y - 60;
+          if(planeP < 1){
+            ctx.save(); ctx.translate(planeX, planeY); ctx.scale(-1,1);
+            // Propellers
+            let propA = a*0.5;
+            ctx.strokeStyle = 'rgba(180,180,170,'+propA+')'; ctx.lineWidth=1;
+            ctx.beginPath(); ctx.moveTo(-4,-15); ctx.lineTo(-4,-15+8*Math.sin(now/20)); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(-4,15); ctx.lineTo(-4,15-8*Math.sin(now/20+1)); ctx.stroke();
+            // Fat fuselage
+            ctx.beginPath();
+            ctx.moveTo(18,0); ctx.lineTo(8,-6); ctx.lineTo(-12,-5);
+            ctx.lineTo(-22,-3); ctx.lineTo(-24,0); ctx.lineTo(-22,3);
+            ctx.lineTo(-12,5); ctx.lineTo(8,6); ctx.closePath();
+            ctx.fillStyle = 'rgba(80,85,75,'+a+')'; ctx.fill();
+            ctx.strokeStyle = 'rgba(140,145,130,'+a*0.5+')'; ctx.lineWidth=0.6; ctx.stroke();
+            // High wings
+            ctx.fillStyle = 'rgba(70,75,65,'+a+')';
+            ctx.beginPath(); ctx.moveTo(0,-5); ctx.lineTo(-10,-26); ctx.lineTo(-16,-25); ctx.lineTo(-8,-5); ctx.closePath(); ctx.fill();
+            ctx.beginPath(); ctx.moveTo(0,5); ctx.lineTo(-10,26); ctx.lineTo(-16,25); ctx.lineTo(-8,5); ctx.closePath(); ctx.fill();
+            // Tail
+            ctx.beginPath(); ctx.moveTo(-20,-3); ctx.lineTo(-28,-12); ctx.lineTo(-30,-11); ctx.lineTo(-22,-3); ctx.closePath(); ctx.fill();
+            // Cargo ramp (open)
+            ctx.fillStyle = 'rgba(60,60,55,'+a*0.8+')';
+            ctx.beginPath(); ctx.moveTo(-22,3); ctx.lineTo(-26,8); ctx.lineTo(-18,7); ctx.lineTo(-16,3); ctx.closePath(); ctx.fill();
+            ctx.restore();
+          }
+        }
         let delay = i * 0.06;
         let localP = Math.max(0, (t-delay)/(v.duration-delay));
         if(localP > 0){
@@ -1562,7 +1878,6 @@ function drawVFX(){
           eg.addColorStop(1,'transparent');
           ctx.fillStyle = eg;
           ctx.beginPath(); ctx.arc(v.x,v.y,r,0,Math.PI*2); ctx.fill();
-          // Debris
           for(let j=0;j<4;j++){
             let da = Math.PI*2/4*j + localP*3;
             let dd = r*0.8;
@@ -1604,8 +1919,44 @@ function drawVFX(){
       } break;
 
       case 'nuke': {
-        // Nuclear explosion - mushroom cloud style
+        // ICBM missile descends then detonates
         let a = p < 0.05 ? p*20 : Math.max(0, 1-p*0.9);
+        // ICBM descending from sky
+        if(p < 0.2){
+          let missileP = p/0.2; // 0->1 during descent
+          let mx = v.x + (1-missileP)*60;
+          let my = -30 + (v.y+30)*missileP;
+          let mAngle = Math.PI*0.5 + 0.3*(1-missileP);
+          ctx.save(); ctx.translate(mx, my); ctx.rotate(mAngle);
+          // Exhaust plume
+          let exLen = 20+Math.sin(now/30)*5;
+          let exg = ctx.createLinearGradient(0,16,0,16+exLen);
+          exg.addColorStop(0,'rgba(255,200,80,0.8)');
+          exg.addColorStop(0.4,'rgba(255,100,0,0.4)');
+          exg.addColorStop(1,'transparent');
+          ctx.fillStyle = exg;
+          ctx.beginPath(); ctx.moveTo(-4,16); ctx.lineTo(0,16+exLen); ctx.lineTo(4,16); ctx.fill();
+          // Missile body (white ICBM)
+          ctx.fillStyle = 'rgba(220,220,210,'+a+')';
+          ctx.beginPath(); ctx.moveTo(0,-18); ctx.lineTo(-5,-8); ctx.lineTo(-5,14); ctx.lineTo(5,14); ctx.lineTo(5,-8); ctx.closePath(); ctx.fill();
+          // Nose cone
+          ctx.fillStyle = 'rgba(180,50,50,'+a+')';
+          ctx.beginPath(); ctx.moveTo(0,-18); ctx.lineTo(-4,-10); ctx.lineTo(4,-10); ctx.closePath(); ctx.fill();
+          // Fins
+          ctx.fillStyle = 'rgba(180,180,170,'+a+')';
+          ctx.beginPath(); ctx.moveTo(-5,10); ctx.lineTo(-10,16); ctx.lineTo(-5,16); ctx.closePath(); ctx.fill();
+          ctx.beginPath(); ctx.moveTo(5,10); ctx.lineTo(10,16); ctx.lineTo(5,16); ctx.closePath(); ctx.fill();
+          // Warning stripe
+          ctx.fillStyle = 'rgba(200,50,0,'+a*0.7+')';
+          ctx.fillRect(-5,2,10,3);
+          ctx.restore();
+          // Smoke trail
+          ctx.beginPath();
+          ctx.moveTo(v.x+60, -30);
+          ctx.quadraticCurveTo(mx+10, my-40, mx, my);
+          ctx.strokeStyle = 'rgba(180,170,160,'+(1-missileP)*0.3+')'; ctx.lineWidth=4; ctx.stroke();
+          ctx.strokeStyle = 'rgba(220,210,200,'+(1-missileP)*0.15+')'; ctx.lineWidth=8; ctx.stroke();
+        }
         // Initial white flash
         if(p < 0.1){
           let fr = (v.radius||120) * 3 * (p/0.1);
@@ -1622,6 +1973,25 @@ function drawVFX(){
         fg.addColorStop(1,'transparent');
         ctx.fillStyle = fg;
         ctx.beginPath(); ctx.arc(v.x,v.y,fbr,0,Math.PI*2); ctx.fill();
+        // Mushroom cloud stem
+        if(p > 0.15 && p < 0.8){
+          let stemA = a*0.4;
+          let stemH = fbr*1.5*Math.min(1,(p-0.15)*3);
+          let stemW = fbr*0.2;
+          ctx.fillStyle = 'rgba(200,120,50,'+stemA+')';
+          ctx.beginPath();
+          ctx.moveTo(v.x-stemW, v.y); ctx.lineTo(v.x-stemW*1.5, v.y-stemH);
+          ctx.lineTo(v.x+stemW*1.5, v.y-stemH); ctx.lineTo(v.x+stemW, v.y);
+          ctx.closePath(); ctx.fill();
+          // Cap
+          let capR = fbr*0.6;
+          let capG = ctx.createRadialGradient(v.x,v.y-stemH,0,v.x,v.y-stemH,capR);
+          capG.addColorStop(0,'rgba(255,180,80,'+stemA+')');
+          capG.addColorStop(0.6,'rgba(200,80,30,'+stemA*0.6+')');
+          capG.addColorStop(1,'transparent');
+          ctx.fillStyle = capG;
+          ctx.beginPath(); ctx.arc(v.x,v.y-stemH,capR,0,Math.PI*2); ctx.fill();
+        }
         // Shockwave rings
         for(let i=0;i<3;i++){
           let sr = fbr * (1 + p*2) + i*20;
@@ -1629,7 +1999,7 @@ function drawVFX(){
           ctx.beginPath(); ctx.arc(v.x,v.y,sr,0,Math.PI*2);
           ctx.strokeStyle = 'rgba(255,100,0,'+Math.max(0,sa)+')'; ctx.lineWidth = 3-i; ctx.stroke();
         }
-        // Radiation symbol at center
+        // Radiation symbol
         if(p > 0.3){
           let ra = a*0.4;
           ctx.strokeStyle = 'rgba(57,255,20,'+ra+')'; ctx.lineWidth = 2;
@@ -1698,12 +2068,40 @@ function drawVFX(){
       } break;
 
       case 'particle_beam': {
-        // Bright beam from vault to target
+        // Particle accelerator cannon fires from vault
         let a = p < 0.1 ? p*10 : Math.max(0, 1-p*1.2);
         let dx = v.tx - game.vaultX, dy = v.ty - game.vaultY;
         let len = Math.sqrt(dx*dx+dy*dy)||1;
         let nx = -dy/len, ny = dx/len;
         let bw = 8 * a;
+        let aimAngle = Math.atan2(dy, dx);
+        // Draw accelerator cannon at vault
+        ctx.save(); ctx.translate(game.vaultX, game.vaultY); ctx.rotate(aimAngle);
+        // Magnetic coils (rings along barrel)
+        for(let i=0;i<4;i++){
+          let cx = 20+i*10;
+          let coilR = 6-i*0.5;
+          ctx.beginPath(); ctx.arc(cx,0,coilR,0,Math.PI*2);
+          ctx.strokeStyle = 'rgba(180,74,255,'+a*(0.6+0.2*Math.sin(now/100+i))+')'; ctx.lineWidth=1.5; ctx.stroke();
+        }
+        // Barrel
+        ctx.fillStyle = 'rgba(80,60,100,'+a+')';
+        ctx.fillRect(15,-3,40,6);
+        ctx.strokeStyle = 'rgba(140,80,200,'+a*0.6+')'; ctx.lineWidth=0.6; ctx.strokeRect(15,-3,40,6);
+        // Power cell (glowing orb at base)
+        let pcR = 8+Math.sin(now/60)*2;
+        let pcg = ctx.createRadialGradient(8,0,0,8,0,pcR);
+        pcg.addColorStop(0,'rgba(220,150,255,'+a*0.8+')');
+        pcg.addColorStop(0.5,'rgba(140,60,200,'+a*0.4+')');
+        pcg.addColorStop(1,'transparent');
+        ctx.fillStyle = pcg; ctx.beginPath(); ctx.arc(8,0,pcR,0,Math.PI*2); ctx.fill();
+        // Muzzle energy
+        let meR = 5+Math.sin(now/40)*3;
+        let meg = ctx.createRadialGradient(57,0,0,57,0,meR);
+        meg.addColorStop(0,'rgba(255,200,255,'+a+')');
+        meg.addColorStop(1,'transparent');
+        ctx.fillStyle = meg; ctx.beginPath(); ctx.arc(57,0,meR,0,Math.PI*2); ctx.fill();
+        ctx.restore();
         // Core beam
         ctx.beginPath();
         ctx.moveTo(game.vaultX+nx*bw, game.vaultY+ny*bw);
@@ -1716,6 +2114,13 @@ function drawVFX(){
         ctx.beginPath();
         ctx.moveTo(game.vaultX, game.vaultY); ctx.lineTo(v.tx, v.ty);
         ctx.strokeStyle = 'rgba(255,200,255,'+a*0.9+')'; ctx.lineWidth = 3; ctx.stroke();
+        // Energy particles along beam
+        for(let i=0;i<6;i++){
+          let bp = (p*3+i/6)%1;
+          let bpx = game.vaultX + dx*bp, bpy = game.vaultY + dy*bp;
+          ctx.beginPath(); ctx.arc(bpx+nx*Math.sin(now/80+i)*4, bpy+ny*Math.sin(now/80+i)*4, 2, 0, Math.PI*2);
+          ctx.fillStyle = 'rgba(255,180,255,'+a*0.7+')'; ctx.fill();
+        }
         // Impact flash
         ctx.beginPath(); ctx.arc(v.tx, v.ty, 15*a, 0, Math.PI*2);
         let ig = ctx.createRadialGradient(v.tx,v.ty,0,v.tx,v.ty,15);
@@ -1791,19 +2196,68 @@ function drawVFX(){
       } break;
 
       case 'gunship_arrive': {
-        // Gunship flyover entrance
+        // Detailed attack helicopter flyover
         let a = Math.max(0, 1-p);
         let gx = -50 + p*game.mapW*1.2;
+        let gy = v.y;
+        let bob = Math.sin(now/200)*3;
+        ctx.save(); ctx.translate(gx, gy+bob);
+        // Rotor blur
+        let rotorA = a*0.25;
+        ctx.beginPath(); ctx.ellipse(0,-10,28,4,0,0,Math.PI*2);
+        ctx.fillStyle = 'rgba(200,200,200,'+rotorA+')'; ctx.fill();
+        // Rotor hub
+        ctx.beginPath(); ctx.arc(0,-10,2,0,Math.PI*2);
+        ctx.fillStyle = 'rgba(60,60,60,'+a+')'; ctx.fill();
+        // Rotor blades (spinning)
+        let rAngle = now/15;
+        ctx.strokeStyle = 'rgba(150,150,140,'+a*0.6+')'; ctx.lineWidth=1.5;
+        for(let i=0;i<4;i++){
+          let ra = rAngle+Math.PI/2*i;
+          ctx.beginPath(); ctx.moveTo(0,-10); ctx.lineTo(Math.cos(ra)*26, -10+Math.sin(ra)*3); ctx.stroke();
+        }
+        // Tail boom
+        ctx.fillStyle = 'rgba(50,55,45,'+a+')';
+        ctx.fillRect(-28,-3,16,4);
+        // Tail rotor
+        ctx.strokeStyle = 'rgba(150,150,140,'+a*0.5+')'; ctx.lineWidth=1;
+        ctx.beginPath(); ctx.moveTo(-28,-6); ctx.lineTo(-28,2); ctx.stroke();
+        // Tail fin
+        ctx.fillStyle = 'rgba(60,65,55,'+a+')';
+        ctx.beginPath(); ctx.moveTo(-26,-3); ctx.lineTo(-30,-8); ctx.lineTo(-32,-6); ctx.lineTo(-28,-2); ctx.closePath(); ctx.fill();
+        // Fuselage
+        ctx.beginPath();
+        ctx.moveTo(18,0); ctx.lineTo(12,-7); ctx.lineTo(2,-10); ctx.lineTo(-8,-8);
+        ctx.lineTo(-14,-3); ctx.lineTo(-14,4); ctx.lineTo(-8,7);
+        ctx.lineTo(4,6); ctx.lineTo(14,3); ctx.closePath();
+        ctx.fillStyle = 'rgba(55,60,50,'+a+')'; ctx.fill();
+        ctx.strokeStyle = 'rgba(255,106,0,'+a*0.4+')'; ctx.lineWidth=0.6; ctx.stroke();
+        // Cockpit glass
+        ctx.beginPath();
+        ctx.moveTo(18,0); ctx.lineTo(12,-5); ctx.lineTo(8,-6); ctx.lineTo(8,0); ctx.lineTo(14,2); ctx.closePath();
+        ctx.fillStyle = 'rgba(150,200,180,'+a*0.4+')'; ctx.fill();
+        // Weapons pylons
+        ctx.fillStyle = 'rgba(70,70,60,'+a+')';
+        ctx.fillRect(-4,6,12,2); // stub wings
+        // Missile pods
+        ctx.fillStyle = 'rgba(80,80,70,'+a+')';
+        ctx.fillRect(-4,7,4,5); ctx.fillRect(6,7,4,5);
+        // Chin gun
+        ctx.fillStyle = 'rgba(60,60,55,'+a+')';
+        ctx.fillRect(12,2,8,2);
+        // Engine exhaust
+        let exA = a*0.4;
+        let exg = ctx.createLinearGradient(-14,0,-22,0);
+        exg.addColorStop(0,'rgba(255,200,100,'+exA+')');
+        exg.addColorStop(1,'transparent');
+        ctx.fillStyle = exg;
+        ctx.fillRect(-22,-2,8,4);
+        ctx.restore();
         // Jet trail
         ctx.beginPath();
-        ctx.moveTo(gx-60, v.y); ctx.lineTo(gx, v.y);
-        ctx.strokeStyle = 'rgba(255,106,0,'+a*0.3+')'; ctx.lineWidth = 6;
-        ctx.stroke();
-        // Jet body
-        ctx.beginPath();
-        ctx.moveTo(gx+15, v.y); ctx.lineTo(gx-10, v.y-8); ctx.lineTo(gx-15, v.y-4);
-        ctx.lineTo(gx-15, v.y+4); ctx.lineTo(gx-10, v.y+8); ctx.closePath();
-        ctx.fillStyle = 'rgba(255,106,0,'+a+')'; ctx.fill();
+        ctx.moveTo(gx-60, gy+bob); ctx.lineTo(gx-14, gy+bob);
+        ctx.strokeStyle = 'rgba(255,106,0,'+a*0.15+')'; ctx.lineWidth = 8; ctx.stroke();
+        ctx.strokeStyle = 'rgba(200,200,200,'+a*0.08+')'; ctx.lineWidth = 14; ctx.stroke();
       } break;
 
       case 'salvage_glow': {
