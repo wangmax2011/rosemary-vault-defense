@@ -759,6 +759,7 @@ function createGame(commanderId){
     fortifyTimer: 0,
     nanoRepairTarget: null,
     nanoRepairTimer: 0,
+    skillVFX: [],
     spawnQueue: [],
     spawnTimer: 0,
     enemiesRemaining: 0,
@@ -1089,6 +1090,529 @@ function updateParticles(dt){
   game.particles = game.particles.filter(p=>p.life>0);
 }
 
+// ---- SKILL VFX SYSTEM ----
+function addVFX(type, x, y, opts){
+  game.skillVFX.push({ type, x, y, time:0, duration: opts.duration||1.5, ...opts });
+}
+
+function updateVFX(dt){
+  for(let v of game.skillVFX){ v.time += dt; }
+  game.skillVFX = game.skillVFX.filter(v => v.time < v.duration);
+}
+
+function drawVFX(){
+  let now = Date.now();
+  for(let v of game.skillVFX){
+    let t = v.time;
+    let p = Math.min(1, t / v.duration); // progress 0->1
+    ctx.save();
+
+    switch(v.type){
+      case 'orbital_strike': {
+        // Beam from top of screen narrowing to target
+        let beamWidth = 60 * (1 - p*0.7);
+        let beamAlpha = Math.max(0, 1 - p*1.5);
+        // Vertical beam
+        let grd = ctx.createLinearGradient(v.x, 0, v.x, v.y);
+        grd.addColorStop(0, 'rgba(0,240,255,0)');
+        grd.addColorStop(0.3, 'rgba(0,240,255,'+beamAlpha*0.3+')');
+        grd.addColorStop(0.8, 'rgba(0,240,255,'+beamAlpha*0.8+')');
+        grd.addColorStop(1, 'rgba(200,255,255,'+beamAlpha+')');
+        ctx.fillStyle = grd;
+        ctx.beginPath();
+        ctx.moveTo(v.x - beamWidth*2, 0);
+        ctx.lineTo(v.x + beamWidth*2, 0);
+        ctx.lineTo(v.x + beamWidth*0.3, v.y);
+        ctx.lineTo(v.x - beamWidth*0.3, v.y);
+        ctx.closePath();
+        ctx.fill();
+        // Impact rings
+        if(p < 0.8){
+          for(let i=0;i<3;i++){
+            let r = (v.radius||80) * (0.3 + p*1.2) + i*15;
+            let a = beamAlpha * (1-i*0.3);
+            ctx.beginPath(); ctx.arc(v.x, v.y, r, 0, Math.PI*2);
+            ctx.strokeStyle = 'rgba(0,240,255,'+a+')';
+            ctx.lineWidth = 3-i;
+            ctx.stroke();
+          }
+        }
+        // Flash on impact
+        if(p < 0.15){
+          let flashR = (v.radius||80) * p * 8;
+          let fg = ctx.createRadialGradient(v.x,v.y,0,v.x,v.y,flashR);
+          fg.addColorStop(0,'rgba(255,255,255,'+(0.8-p*5)+')');
+          fg.addColorStop(1,'transparent');
+          ctx.fillStyle = fg;
+          ctx.beginPath(); ctx.arc(v.x,v.y,flashR,0,Math.PI*2); ctx.fill();
+        }
+      } break;
+
+      case 'ion_sweep': {
+        // Horizontal beam sweeping across screen
+        let sweepX = v.x + (game.mapW * (p - 0.5)) * v.dir;
+        let beamH = 30;
+        let a = p < 0.1 ? p*10 : p > 0.8 ? (1-p)*5 : 1;
+        let grd = ctx.createLinearGradient(sweepX-40, 0, sweepX+40, 0);
+        grd.addColorStop(0, 'rgba(0,240,255,0)');
+        grd.addColorStop(0.5, 'rgba(0,240,255,'+a*0.7+')');
+        grd.addColorStop(1, 'rgba(0,240,255,0)');
+        ctx.fillStyle = grd;
+        ctx.fillRect(sweepX-40, 0, 80, game.mapH);
+        // Core bright line
+        ctx.beginPath();
+        ctx.moveTo(sweepX, 0); ctx.lineTo(sweepX, game.mapH);
+        ctx.strokeStyle = 'rgba(200,255,255,'+a*0.9+')'; ctx.lineWidth = 2; ctx.stroke();
+      } break;
+
+      case 'satellite_hit': {
+        // Small orbital strike
+        let a = p < 0.2 ? p*5 : Math.max(0,1-p*1.2);
+        // Beam
+        let grd = ctx.createLinearGradient(v.x, v.y-200, v.x, v.y);
+        grd.addColorStop(0, 'rgba(0,240,255,0)');
+        grd.addColorStop(1, 'rgba(0,240,255,'+a*0.6+')');
+        ctx.fillStyle = grd;
+        ctx.beginPath();
+        ctx.moveTo(v.x-15, v.y-200); ctx.lineTo(v.x+15, v.y-200);
+        ctx.lineTo(v.x+4, v.y); ctx.lineTo(v.x-4, v.y);
+        ctx.closePath(); ctx.fill();
+        // Impact
+        let ir = 30 * p;
+        ctx.beginPath(); ctx.arc(v.x, v.y, ir, 0, Math.PI*2);
+        ctx.strokeStyle = 'rgba(0,240,255,'+a+')'; ctx.lineWidth = 2; ctx.stroke();
+      } break;
+
+      case 'overclock_pulse': {
+        // Expanding cyan rings from all turrets
+        let a = Math.max(0, 1-p);
+        let r = 20 + p * 40;
+        for(let tr of game.turrets){
+          ctx.beginPath(); ctx.arc(tr.x, tr.y, r, 0, Math.PI*2);
+          ctx.strokeStyle = 'rgba(0,240,255,'+a*0.5+')'; ctx.lineWidth = 2; ctx.stroke();
+        }
+      } break;
+
+      case 'fortify_wave': {
+        // Shield bubble expanding from vault to all turrets
+        let a = Math.max(0, 1-p);
+        let r = p * 300;
+        ctx.beginPath(); ctx.arc(game.vaultX, game.vaultY, r, 0, Math.PI*2);
+        ctx.strokeStyle = 'rgba(0,240,255,'+a*0.4+')';
+        ctx.lineWidth = 3;
+        ctx.setLineDash([8,4]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      } break;
+
+      case 'market_surge': {
+        // Green credit symbols floating upward
+        let a = Math.max(0, 1-p);
+        ctx.font = 'bold 14px Orbitron';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = 'rgba(57,255,20,'+a+')';
+        for(let i=0;i<6;i++){
+          let sx = v.x + Math.sin(now/300+i*1.2)*80;
+          let sy = v.y - p*120 - i*25;
+          ctx.fillText('$', sx, sy);
+        }
+        ctx.textAlign = 'start';
+      } break;
+
+      case 'bounty_mark': {
+        // Crosshair markers appearing
+        let a = p < 0.2 ? p*5 : Math.max(0,1-p*1.1);
+        ctx.strokeStyle = 'rgba(255,45,123,'+a+')';
+        ctx.lineWidth = 1.5;
+        let s = 10 + (1-p)*5;
+        ctx.beginPath();
+        ctx.moveTo(v.x-s, v.y); ctx.lineTo(v.x+s, v.y);
+        ctx.moveTo(v.x, v.y-s); ctx.lineTo(v.x, v.y+s);
+        ctx.stroke();
+        ctx.beginPath(); ctx.arc(v.x, v.y, s*0.7, 0, Math.PI*2);
+        ctx.stroke();
+      } break;
+
+      case 'economic_boom': {
+        // Gold ring expanding from each turret
+        let a = Math.max(0, 1-p);
+        ctx.strokeStyle = 'rgba(255,215,0,'+a*0.5+')';
+        ctx.lineWidth = 2;
+        let r = 15 + p*25;
+        for(let tr of game.turrets){
+          ctx.beginPath(); ctx.arc(tr.x, tr.y, r, 0, Math.PI*2); ctx.stroke();
+        }
+      } break;
+
+      case 'airstrike_line': {
+        // Carpet bomb line with sequential explosions
+        let a = p < 0.1 ? p*10 : Math.max(0, 1-p*1.2);
+        let dx = v.ex - v.sx, dy = v.ey - v.sy;
+        // Trail of explosions along line
+        let numBombs = 8;
+        for(let i=0;i<numBombs;i++){
+          let bp = i/numBombs;
+          if(p > bp*0.7){
+            let ba = Math.max(0, a - bp*0.3);
+            let bx = v.sx + dx*bp, by = v.sy + dy*bp;
+            let br = 20 + (p-bp*0.7)*60;
+            let bg = ctx.createRadialGradient(bx,by,0,bx,by,br);
+            bg.addColorStop(0,'rgba(255,150,0,'+ba*0.6+')');
+            bg.addColorStop(0.5,'rgba(255,80,0,'+ba*0.3+')');
+            bg.addColorStop(1,'transparent');
+            ctx.fillStyle = bg;
+            ctx.beginPath(); ctx.arc(bx,by,br,0,Math.PI*2); ctx.fill();
+          }
+        }
+        // Jet trail
+        ctx.beginPath(); ctx.moveTo(v.sx,v.sy); ctx.lineTo(v.ex,v.ey);
+        ctx.strokeStyle = 'rgba(255,106,0,'+a*0.4+')'; ctx.lineWidth = 4;
+        ctx.setLineDash([10,5]); ctx.stroke(); ctx.setLineDash([]);
+      } break;
+
+      case 'artillery_shell': {
+        // Shell arcing down
+        let a = p < 0.5 ? 1 : Math.max(0,(1-p)*2);
+        let shellY = v.y - 150*(1-p*2)*(1-p*2)*Math.sign(0.5-p);
+        if(p < 0.5){
+          // Shell falling
+          ctx.beginPath();
+          ctx.arc(v.x + Math.sin(p*8)*3, v.y - 100*(1-p*2), 3, 0, Math.PI*2);
+          ctx.fillStyle = 'rgba(255,200,100,'+a+')';
+          ctx.fill();
+        }
+        // Explosion on impact
+        if(p > 0.4){
+          let ep = (p-0.4)/0.6;
+          let er = 15 + ep*50;
+          let ea = Math.max(0, 1-ep*1.5);
+          let eg = ctx.createRadialGradient(v.x,v.y,0,v.x,v.y,er);
+          eg.addColorStop(0,'rgba(255,200,50,'+ea+')');
+          eg.addColorStop(0.4,'rgba(255,100,0,'+ea*0.7+')');
+          eg.addColorStop(1,'transparent');
+          ctx.fillStyle = eg;
+          ctx.beginPath(); ctx.arc(v.x,v.y,er,0,Math.PI*2); ctx.fill();
+        }
+      } break;
+
+      case 'napalm_drop': {
+        // Fiery impact with rising flames
+        let a = p < 0.15 ? p*7 : Math.max(0, 1-p);
+        // Fire columns
+        for(let i=0;i<8;i++){
+          let fa = Math.PI*2/8*i + now/500;
+          let fr = (v.radius||60) * (0.3 + p*0.6);
+          let fx = v.x + Math.cos(fa)*fr;
+          let fy = v.y + Math.sin(fa)*fr;
+          let fh = 15 + Math.sin(now/200+i)*8;
+          let fg = ctx.createLinearGradient(fx, fy, fx, fy-fh);
+          fg.addColorStop(0,'rgba(255,100,0,'+a*0.6+')');
+          fg.addColorStop(0.5,'rgba(255,50,0,'+a*0.3+')');
+          fg.addColorStop(1,'transparent');
+          ctx.fillStyle = fg;
+          ctx.fillRect(fx-4, fy-fh, 8, fh);
+        }
+        // Ground fire ring
+        ctx.beginPath(); ctx.arc(v.x,v.y,v.radius||60,0,Math.PI*2);
+        ctx.strokeStyle = 'rgba(255,80,0,'+a*0.5+')'; ctx.lineWidth = 3; ctx.stroke();
+      } break;
+
+      case 'howitzer_impact': {
+        // Massive single explosion
+        let a = p < 0.1 ? p*10 : Math.max(0, 1-p);
+        let r = 20 + p*80;
+        // Shockwave ring
+        ctx.beginPath(); ctx.arc(v.x,v.y,r*1.5,0,Math.PI*2);
+        ctx.strokeStyle = 'rgba(255,150,0,'+a*0.7+')'; ctx.lineWidth = 4; ctx.stroke();
+        // Inner fireball
+        let fg = ctx.createRadialGradient(v.x,v.y,0,v.x,v.y,r);
+        fg.addColorStop(0,'rgba(255,255,200,'+a+')');
+        fg.addColorStop(0.3,'rgba(255,150,0,'+a*0.8+')');
+        fg.addColorStop(0.7,'rgba(255,50,0,'+a*0.4+')');
+        fg.addColorStop(1,'transparent');
+        ctx.fillStyle = fg;
+        ctx.beginPath(); ctx.arc(v.x,v.y,r,0,Math.PI*2); ctx.fill();
+        // Screen shake simulation via slight context jitter
+        if(p < 0.2){
+          let shake = (0.2-p)*30;
+          ctx.translate(Math.sin(now*0.1)*shake, Math.cos(now*0.13)*shake);
+        }
+      } break;
+
+      case 'cluster_bomb': {
+        // Multiple small explosions popping sequentially
+        let a = Math.max(0, 1-p);
+        let i = v.index || 0;
+        let delay = i * 0.06;
+        let localP = Math.max(0, (t-delay)/(v.duration-delay));
+        if(localP > 0){
+          let r = 10 + localP*35;
+          let la = Math.max(0, 1-localP*1.3);
+          let eg = ctx.createRadialGradient(v.x,v.y,0,v.x,v.y,r);
+          eg.addColorStop(0,'rgba(255,200,100,'+la+')');
+          eg.addColorStop(0.5,'rgba(255,106,0,'+la*0.6+')');
+          eg.addColorStop(1,'transparent');
+          ctx.fillStyle = eg;
+          ctx.beginPath(); ctx.arc(v.x,v.y,r,0,Math.PI*2); ctx.fill();
+          // Debris
+          for(let j=0;j<4;j++){
+            let da = Math.PI*2/4*j + localP*3;
+            let dd = r*0.8;
+            ctx.beginPath(); ctx.arc(v.x+Math.cos(da)*dd, v.y+Math.sin(da)*dd, 2, 0, Math.PI*2);
+            ctx.fillStyle = 'rgba(255,150,0,'+la*0.8+')'; ctx.fill();
+          }
+        }
+      } break;
+
+      case 'singularity': {
+        // Black hole with accretion disk
+        let a = p < 0.1 ? p*10 : p > 0.85 ? (1-p)*7 : 1;
+        let r = (v.radius||80) * Math.min(1, p*3);
+        // Accretion disk - swirling rings
+        for(let i=0;i<5;i++){
+          let dr = r*(0.3+i*0.15);
+          let rot = now/300 + i*0.8;
+          ctx.beginPath(); ctx.arc(v.x,v.y,dr, rot, rot+Math.PI*1.2);
+          ctx.strokeStyle = 'rgba(180,74,255,'+(a*(0.6-i*0.1))+')';
+          ctx.lineWidth = 3-i*0.4; ctx.stroke();
+        }
+        // Dark center
+        let bg = ctx.createRadialGradient(v.x,v.y,0,v.x,v.y,r*0.3);
+        bg.addColorStop(0,'rgba(0,0,0,'+a*0.9+')');
+        bg.addColorStop(1,'transparent');
+        ctx.fillStyle = bg;
+        ctx.beginPath(); ctx.arc(v.x,v.y,r*0.3,0,Math.PI*2); ctx.fill();
+        // Gravitational lensing ring
+        ctx.beginPath(); ctx.arc(v.x,v.y,r*0.4,0,Math.PI*2);
+        ctx.strokeStyle = 'rgba(255,255,255,'+a*0.3+')'; ctx.lineWidth = 1; ctx.stroke();
+        // Inward spiraling particles
+        for(let i=0;i<12;i++){
+          let sa = now/200 + Math.PI*2/12*i;
+          let sr = r * (1 - (t*0.15)%1);
+          let sx = v.x + Math.cos(sa)*sr, sy = v.y + Math.sin(sa)*sr;
+          ctx.beginPath(); ctx.arc(sx,sy,1.5,0,Math.PI*2);
+          ctx.fillStyle = 'rgba(200,150,255,'+a*0.6+')'; ctx.fill();
+        }
+      } break;
+
+      case 'nuke': {
+        // Nuclear explosion - mushroom cloud style
+        let a = p < 0.05 ? p*20 : Math.max(0, 1-p*0.9);
+        // Initial white flash
+        if(p < 0.1){
+          let fr = (v.radius||120) * 3 * (p/0.1);
+          ctx.fillStyle = 'rgba(255,255,255,'+(1-p*10)*0.6+')';
+          ctx.beginPath(); ctx.arc(v.x,v.y,fr,0,Math.PI*2); ctx.fill();
+        }
+        // Fireball
+        let fbr = (v.radius||120) * Math.min(1.2, p*4);
+        let fg = ctx.createRadialGradient(v.x,v.y,0,v.x,v.y,fbr);
+        fg.addColorStop(0,'rgba(255,255,200,'+a*0.7+')');
+        fg.addColorStop(0.2,'rgba(255,200,50,'+a*0.5+')');
+        fg.addColorStop(0.5,'rgba(255,80,0,'+a*0.3+')');
+        fg.addColorStop(0.8,'rgba(200,0,0,'+a*0.15+')');
+        fg.addColorStop(1,'transparent');
+        ctx.fillStyle = fg;
+        ctx.beginPath(); ctx.arc(v.x,v.y,fbr,0,Math.PI*2); ctx.fill();
+        // Shockwave rings
+        for(let i=0;i<3;i++){
+          let sr = fbr * (1 + p*2) + i*20;
+          let sa = a * (0.5-i*0.15);
+          ctx.beginPath(); ctx.arc(v.x,v.y,sr,0,Math.PI*2);
+          ctx.strokeStyle = 'rgba(255,100,0,'+Math.max(0,sa)+')'; ctx.lineWidth = 3-i; ctx.stroke();
+        }
+        // Radiation symbol at center
+        if(p > 0.3){
+          let ra = a*0.4;
+          ctx.strokeStyle = 'rgba(57,255,20,'+ra+')'; ctx.lineWidth = 2;
+          for(let i=0;i<3;i++){
+            let sa2 = Math.PI*2/3*i;
+            ctx.beginPath(); ctx.arc(v.x,v.y,20,sa2,sa2+Math.PI/3); ctx.stroke();
+          }
+        }
+      } break;
+
+      case 'antimatter': {
+        // Implosion then explosion
+        let a = Math.max(0, 1-p*1.1);
+        if(p < 0.3){
+          // Implosion - ring shrinking
+          let ir = (v.radius||80) * (1-p*3.3);
+          ctx.beginPath(); ctx.arc(v.x,v.y,ir,0,Math.PI*2);
+          ctx.strokeStyle = 'rgba(180,74,255,'+a+')'; ctx.lineWidth = 3; ctx.stroke();
+          // Inward particles
+          for(let i=0;i<8;i++){
+            let ia = Math.PI*2/8*i;
+            let id = ir*1.2;
+            ctx.beginPath(); ctx.arc(v.x+Math.cos(ia)*id, v.y+Math.sin(ia)*id, 2, 0, Math.PI*2);
+            ctx.fillStyle = 'rgba(200,100,255,'+a+')'; ctx.fill();
+          }
+        } else {
+          // Explosion outward
+          let ep = (p-0.3)/0.7;
+          let er = (v.radius||80) * ep * 1.5;
+          let ea = Math.max(0, 1-ep*1.3);
+          let eg = ctx.createRadialGradient(v.x,v.y,0,v.x,v.y,er);
+          eg.addColorStop(0,'rgba(255,200,255,'+ea+')');
+          eg.addColorStop(0.4,'rgba(180,74,255,'+ea*0.6+')');
+          eg.addColorStop(1,'transparent');
+          ctx.fillStyle = eg;
+          ctx.beginPath(); ctx.arc(v.x,v.y,er,0,Math.PI*2); ctx.fill();
+          // Outer ring
+          ctx.beginPath(); ctx.arc(v.x,v.y,er*1.2,0,Math.PI*2);
+          ctx.strokeStyle = 'rgba(180,74,255,'+ea*0.5+')'; ctx.lineWidth = 2; ctx.stroke();
+        }
+      } break;
+
+      case 'phase_shield_activate': {
+        // Hexagonal shield forming around vault
+        let a = p < 0.2 ? p*5 : Math.max(0, 1-p*1.1);
+        let r = 80;
+        // Hex segments forming
+        ctx.save();
+        ctx.translate(game.vaultX, game.vaultY);
+        for(let i=0;i<6;i++){
+          let ha1 = Math.PI/3*i - Math.PI/6;
+          let ha2 = Math.PI/3*(i+1) - Math.PI/6;
+          let segP = Math.min(1, Math.max(0, (p*6-i)*2));
+          if(segP > 0){
+            ctx.beginPath();
+            ctx.moveTo(Math.cos(ha1)*r, Math.sin(ha1)*r);
+            ctx.lineTo(Math.cos(ha1+(ha2-ha1)*segP)*r, Math.sin(ha1+(ha2-ha1)*segP)*r);
+            ctx.strokeStyle = 'rgba(180,74,255,'+a+')'; ctx.lineWidth = 3; ctx.stroke();
+          }
+        }
+        ctx.restore();
+        // Energy ripple
+        let rr = r * (0.5 + p);
+        ctx.beginPath(); ctx.arc(game.vaultX, game.vaultY, rr, 0, Math.PI*2);
+        ctx.strokeStyle = 'rgba(180,74,255,'+a*0.3+')'; ctx.lineWidth = 1; ctx.stroke();
+      } break;
+
+      case 'particle_beam': {
+        // Bright beam from vault to target
+        let a = p < 0.1 ? p*10 : Math.max(0, 1-p*1.2);
+        let dx = v.tx - game.vaultX, dy = v.ty - game.vaultY;
+        let len = Math.sqrt(dx*dx+dy*dy)||1;
+        let nx = -dy/len, ny = dx/len;
+        let bw = 8 * a;
+        // Core beam
+        ctx.beginPath();
+        ctx.moveTo(game.vaultX+nx*bw, game.vaultY+ny*bw);
+        ctx.lineTo(v.tx+nx*bw*0.3, v.ty+ny*bw*0.3);
+        ctx.lineTo(v.tx-nx*bw*0.3, v.ty-ny*bw*0.3);
+        ctx.lineTo(game.vaultX-nx*bw, game.vaultY-ny*bw);
+        ctx.closePath();
+        ctx.fillStyle = 'rgba(180,74,255,'+a*0.6+')'; ctx.fill();
+        // Bright center line
+        ctx.beginPath();
+        ctx.moveTo(game.vaultX, game.vaultY); ctx.lineTo(v.tx, v.ty);
+        ctx.strokeStyle = 'rgba(255,200,255,'+a*0.9+')'; ctx.lineWidth = 3; ctx.stroke();
+        // Impact flash
+        ctx.beginPath(); ctx.arc(v.tx, v.ty, 15*a, 0, Math.PI*2);
+        let ig = ctx.createRadialGradient(v.tx,v.ty,0,v.tx,v.ty,15);
+        ig.addColorStop(0,'rgba(255,255,255,'+a*0.8+')');
+        ig.addColorStop(1,'transparent');
+        ctx.fillStyle = ig; ctx.fill();
+      } break;
+
+      case 'exp_turret_spawn': {
+        // Teleport-in effect
+        let a = p < 0.3 ? 1 : Math.max(0, 1-(p-0.3)*1.5);
+        // Vertical scan lines
+        for(let i=0;i<5;i++){
+          let lx = v.x - 15 + i*7.5;
+          let lh = 40 * Math.min(1, p*4);
+          ctx.beginPath();
+          ctx.moveTo(lx, v.y - lh); ctx.lineTo(lx, v.y + lh);
+          ctx.strokeStyle = 'rgba(180,74,255,'+a*0.6+')'; ctx.lineWidth = 1.5; ctx.stroke();
+        }
+        // Hexagonal warp ring
+        ctx.save(); ctx.translate(v.x, v.y); ctx.rotate(now/300);
+        ctx.beginPath();
+        for(let i=0;i<6;i++){ let ha=Math.PI/3*i; ctx.lineTo(Math.cos(ha)*20*a, Math.sin(ha)*20*a); }
+        ctx.closePath();
+        ctx.strokeStyle = 'rgba(180,74,255,'+a+')'; ctx.lineWidth = 2; ctx.stroke();
+        ctx.restore();
+      } break;
+
+      case 'black_market': {
+        // Discount tags raining down
+        let a = Math.max(0, 1-p);
+        ctx.font = 'bold 11px Orbitron';
+        ctx.textAlign = 'center';
+        for(let i=0;i<5;i++){
+          let tx = v.x + Math.sin(i*2.1+now/400)*100;
+          let ty = 30 + p*game.mapH*0.4 + i*30;
+          ctx.fillStyle = 'rgba(57,255,20,'+a*0.7+')';
+          ctx.fillText('-30%', tx, ty);
+        }
+        ctx.textAlign = 'start';
+      } break;
+
+      case 'compound_interest': {
+        // Spiraling coins toward vault
+        let a = Math.max(0, 1-p);
+        for(let i=0;i<8;i++){
+          let sa = now/300 + Math.PI*2/8*i;
+          let sr = 120*(1-p);
+          let sx = game.vaultX + Math.cos(sa)*sr;
+          let sy = game.vaultY + Math.sin(sa)*sr;
+          ctx.beginPath(); ctx.arc(sx,sy,3,0,Math.PI*2);
+          ctx.fillStyle = 'rgba(255,215,0,'+a*0.8+')'; ctx.fill();
+          ctx.strokeStyle = 'rgba(200,170,0,'+a+')'; ctx.lineWidth=0.5; ctx.stroke();
+        }
+      } break;
+
+      case 'nano_repair_beam': {
+        // Repair beam from sky to turret
+        let a = p < 0.2 ? p*5 : Math.max(0,1-p*1.1);
+        let grd = ctx.createLinearGradient(v.x, v.y-120, v.x, v.y);
+        grd.addColorStop(0,'transparent');
+        grd.addColorStop(1,'rgba(57,255,20,'+a*0.5+')');
+        ctx.fillStyle = grd;
+        ctx.beginPath();
+        ctx.moveTo(v.x-20, v.y-120); ctx.lineTo(v.x+20, v.y-120);
+        ctx.lineTo(v.x+5, v.y); ctx.lineTo(v.x-5, v.y);
+        ctx.closePath(); ctx.fill();
+        // Wrench symbol
+        ctx.font = '16px sans-serif'; ctx.textAlign = 'center';
+        ctx.fillStyle = 'rgba(57,255,20,'+a+')';
+        ctx.fillText('\u{1F527}', v.x, v.y - 20 - p*30);
+        ctx.textAlign = 'start';
+      } break;
+
+      case 'gunship_arrive': {
+        // Gunship flyover entrance
+        let a = Math.max(0, 1-p);
+        let gx = -50 + p*game.mapW*1.2;
+        // Jet trail
+        ctx.beginPath();
+        ctx.moveTo(gx-60, v.y); ctx.lineTo(gx, v.y);
+        ctx.strokeStyle = 'rgba(255,106,0,'+a*0.3+')'; ctx.lineWidth = 6;
+        ctx.stroke();
+        // Jet body
+        ctx.beginPath();
+        ctx.moveTo(gx+15, v.y); ctx.lineTo(gx-10, v.y-8); ctx.lineTo(gx-15, v.y-4);
+        ctx.lineTo(gx-15, v.y+4); ctx.lineTo(gx-10, v.y+8); ctx.closePath();
+        ctx.fillStyle = 'rgba(255,106,0,'+a+')'; ctx.fill();
+      } break;
+
+      case 'salvage_glow': {
+        // Green sparkles on all enemies
+        let a = Math.max(0, 1-p);
+        for(let e of game.enemies){
+          if(!e.alive) continue;
+          ctx.beginPath(); ctx.arc(e.x, e.y-e.radius-8, 3, 0, Math.PI*2);
+          ctx.fillStyle = 'rgba(57,255,20,'+a*(0.4+0.4*Math.sin(now/150))+')'; ctx.fill();
+        }
+      } break;
+    }
+
+    ctx.restore();
+  }
+}
+
 function updateTimers(dt){
   if(game.overclockTimer > 0) game.overclockTimer -= dt;
   if(game.marketSurgeTimer > 0) game.marketSurgeTimer -= dt;
@@ -1166,6 +1690,7 @@ function gameLoop(timestamp){
   }
   updateTimers(dt);
   updateParticles(dt);
+  updateVFX(dt);
   render();
   updateHUD();
   requestAnimationFrame(gameLoop);
@@ -1194,29 +1719,80 @@ function render(){
   for(let x=0; x<canvas.width; x+=gs){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvas.height); ctx.stroke(); }
   for(let y=0; y<canvas.height; y+=gs){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(canvas.width,y); ctx.stroke(); }
 
-  // Area effects (napalm, radiation)
+  // Area effects (napalm, radiation) - enhanced
   for(let ef of game.effects){
-    let alpha = Math.min(0.3, ef.timer * 0.1);
+    let alpha = Math.min(0.4, ef.timer * 0.15);
+    let now2 = Date.now();
+    // Outer glow ring
+    ctx.beginPath();
+    ctx.arc(ef.x, ef.y, ef.radius*1.1, 0, Math.PI*2);
+    ctx.strokeStyle = ef.color + Math.round(alpha*180).toString(16).padStart(2,'0');
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    // Animated inner fill
+    let grad = ctx.createRadialGradient(ef.x, ef.y, 0, ef.x, ef.y, ef.radius);
+    let a1 = alpha * 0.8;
+    let a2 = alpha * 0.3;
+    grad.addColorStop(0, ef.color + Math.round(a1*255).toString(16).padStart(2,'0'));
+    grad.addColorStop(0.6, ef.color + Math.round(a2*255).toString(16).padStart(2,'0'));
+    grad.addColorStop(1, ef.color + '00');
     ctx.beginPath();
     ctx.arc(ef.x, ef.y, ef.radius, 0, Math.PI*2);
-    ctx.fillStyle = ef.color.replace(')', ','+alpha+')').replace('rgb','rgba');
-    if(ef.color.startsWith('#')){
-      ctx.fillStyle = ef.color + Math.round(alpha*255).toString(16).padStart(2,'0');
-    }
-    ctx.globalAlpha = alpha;
+    ctx.fillStyle = grad;
     ctx.fill();
-    ctx.globalAlpha = 1;
+    // Flickering inner sparks
+    if(ef.dps > 0){
+      for(let i=0;i<6;i++){
+        let sa = now2/300 + Math.PI*2/6*i;
+        let sr = ef.radius * (0.2 + 0.5*Math.abs(Math.sin(now2/200+i*1.3)));
+        let sx = ef.x + Math.cos(sa)*sr, sy = ef.y + Math.sin(sa)*sr;
+        ctx.beginPath(); ctx.arc(sx, sy, 2+Math.sin(now2/100+i)*1.5, 0, Math.PI*2);
+        ctx.fillStyle = ef.color + Math.round(alpha*200).toString(16).padStart(2,'0');
+        ctx.fill();
+      }
+    }
   }
 
-  // Phase shield
+  // Phase shield - enhanced
   if(game.phaseShieldTimer > 0){
-    ctx.beginPath();
-    ctx.arc(game.vaultX, game.vaultY, 80, 0, Math.PI*2);
-    ctx.strokeStyle = 'rgba(180,74,255,0.6)';
-    ctx.lineWidth = 3;
-    ctx.stroke();
-    ctx.fillStyle = 'rgba(180,74,255,0.08)';
-    ctx.fill();
+    let now2 = Date.now();
+    let pa = Math.min(1, game.phaseShieldTimer*0.5);
+    // Outer hexagonal shell
+    ctx.save();
+    ctx.translate(game.vaultX, game.vaultY);
+    // Hex grid pattern
+    for(let ring=0;ring<3;ring++){
+      let r = 50 + ring*15;
+      ctx.beginPath();
+      for(let i=0;i<6;i++){
+        let ha = Math.PI/3*i - Math.PI/6 + now2/4000;
+        ctx.lineTo(Math.cos(ha)*r, Math.sin(ha)*r);
+      }
+      ctx.closePath();
+      ctx.strokeStyle = 'rgba(180,74,255,'+(pa*(0.5-ring*0.15))+')';
+      ctx.lineWidth = 2-ring*0.5;
+      ctx.stroke();
+    }
+    ctx.restore();
+    // Energy fill
+    let sg = ctx.createRadialGradient(game.vaultX,game.vaultY,20,game.vaultX,game.vaultY,85);
+    sg.addColorStop(0,'rgba(180,74,255,'+pa*0.02+')');
+    sg.addColorStop(0.7,'rgba(180,74,255,'+pa*0.08+')');
+    sg.addColorStop(1,'rgba(180,74,255,0)');
+    ctx.beginPath(); ctx.arc(game.vaultX,game.vaultY,85,0,Math.PI*2);
+    ctx.fillStyle = sg; ctx.fill();
+    // Ripple effect
+    let ripR = 80 + Math.sin(now2/300)*5;
+    ctx.beginPath(); ctx.arc(game.vaultX,game.vaultY,ripR,0,Math.PI*2);
+    ctx.strokeStyle = 'rgba(180,74,255,'+pa*0.4+')'; ctx.lineWidth = 3; ctx.stroke();
+    // Energy sparks on surface
+    for(let i=0;i<8;i++){
+      let sa = now2/500 + Math.PI*2/8*i;
+      let sx = game.vaultX + Math.cos(sa)*80;
+      let sy = game.vaultY + Math.sin(sa)*80;
+      ctx.beginPath(); ctx.arc(sx,sy,2,0,Math.PI*2);
+      ctx.fillStyle = 'rgba(220,180,255,'+pa*0.6+')'; ctx.fill();
+    }
     ctx.lineWidth = 1;
   }
 
@@ -1686,18 +2262,42 @@ function render(){
     ctx.globalAlpha = 1;
   }
 
-  // Gunship
+  // Skill VFX
+  drawVFX();
+
+  // Gunship - enhanced
   if(game.gunshipTimer > 0){
     let gx = game.vaultX + Math.cos(game.gunshipAngle)*200;
     let gy = game.vaultY + Math.sin(game.gunshipAngle)*150;
+    let ga = game.gunshipAngle + Math.PI/2; // heading direction
+    let now2 = Date.now();
+    ctx.save();
+    ctx.translate(gx, gy);
+    ctx.rotate(ga);
+    // Engine glow
+    let eg = ctx.createRadialGradient(-14, 0, 0, -14, 0, 10);
+    eg.addColorStop(0, 'rgba(255,150,0,0.6)');
+    eg.addColorStop(1, 'transparent');
+    ctx.fillStyle = eg;
+    ctx.beginPath(); ctx.arc(-14, 0, 8+Math.sin(now2/50)*2, 0, Math.PI*2); ctx.fill();
+    // Body
     ctx.beginPath();
-    ctx.moveTo(gx-10, gy);
-    ctx.lineTo(gx+10, gy);
-    ctx.lineTo(gx, gy-6);
-    ctx.closePath();
-    ctx.fillStyle = '#ff6a00';
-    ctx.fill();
-    // fire line to nearest enemy
+    ctx.moveTo(14, 0); ctx.lineTo(4, -5); ctx.lineTo(-12, -4);
+    ctx.lineTo(-14, 0); ctx.lineTo(-12, 4); ctx.lineTo(4, 5); ctx.closePath();
+    ctx.fillStyle = '#332200'; ctx.fill();
+    ctx.strokeStyle = '#ff6a00'; ctx.lineWidth = 1; ctx.stroke();
+    // Wings
+    ctx.beginPath();
+    ctx.moveTo(0, -5); ctx.lineTo(-4, -12); ctx.lineTo(-8, -11); ctx.lineTo(-4, -5); ctx.closePath();
+    ctx.fillStyle = '#221500'; ctx.fill(); ctx.strokeStyle = '#ff6a0088'; ctx.lineWidth = 0.8; ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(0, 5); ctx.lineTo(-4, 12); ctx.lineTo(-8, 11); ctx.lineTo(-4, 5); ctx.closePath();
+    ctx.fillStyle = '#221500'; ctx.fill(); ctx.stroke();
+    // Cockpit
+    ctx.beginPath(); ctx.arc(8, 0, 2.5, 0, Math.PI*2);
+    ctx.fillStyle = 'rgba(255,200,100,0.6)'; ctx.fill();
+    ctx.restore();
+    // Fire tracer to nearest enemy
     let best = null, bd = Infinity;
     for(let e of game.enemies){
       if(!e.alive) continue;
@@ -1705,8 +2305,16 @@ function render(){
       if(d<bd){bd=d;best=e;}
     }
     if(best){
+      // Tracer rounds (dashed bright line)
       ctx.beginPath(); ctx.moveTo(gx,gy); ctx.lineTo(best.x,best.y);
-      ctx.strokeStyle='rgba(255,106,0,0.5)'; ctx.lineWidth=1; ctx.stroke();
+      ctx.strokeStyle='rgba(255,200,50,0.7)'; ctx.lineWidth=1.5;
+      ctx.setLineDash([4,6]); ctx.stroke(); ctx.setLineDash([]);
+      // Muzzle flash
+      ctx.beginPath(); ctx.arc(gx, gy, 4+Math.sin(now2/40)*2, 0, Math.PI*2);
+      ctx.fillStyle = 'rgba(255,200,100,0.4)'; ctx.fill();
+      // Impact sparks
+      ctx.beginPath(); ctx.arc(best.x, best.y, 5, 0, Math.PI*2);
+      ctx.fillStyle = 'rgba(255,150,0,0.3)'; ctx.fill();
     }
   }
 
@@ -1869,12 +2477,15 @@ function executeSkill(num, tx, ty){
 
   switch(cmd.id){
     case 'vex':
-      if(num===1){ game.overclockTimer = 12 * power; }
-      else { // orbital strike
+      if(num===1){
+        game.overclockTimer = 12 * power;
+        addVFX('overclock_pulse', game.vaultX, game.vaultY, {duration:1.5});
+      } else { // orbital strike
         let dmg = 300 * power;
         for(let e of game.enemies){ if(e.alive && dist(e.x,e.y,tx,ty)<80*power) damageEnemy(e,dmg); }
         addParticles(tx,ty,'#00f0ff',20);
         game.effects.push({x:tx,y:ty,radius:80*power,dps:0,timer:0.5,color:'#00f0ff'});
+        addVFX('orbital_strike', tx, ty, {duration:2.0, radius:80*power});
       } break;
     case 'raze':
       if(num===1){
@@ -1884,31 +2495,46 @@ function executeSkill(num, tx, ty){
           t.nanoRepair = true;
           game.nanoRepairTarget = t;
           game.nanoRepairTimer = 15*power;
+          addVFX('nano_repair_beam', t.x, t.y, {duration:1.8});
         }
       } else {
         let dmg = 200*power;
         for(let e of game.enemies){ if(e.alive) damageEnemy(e,dmg); }
         addParticles(game.vaultX,game.vaultY,'#00f0ff',15);
+        addVFX('ion_sweep', game.vaultX, game.vaultY, {duration:1.5, dir:1});
       } break;
     case 'forge':
-      if(num===1){ game.fortifyTimer = 20*power; }
-      else {
+      if(num===1){
+        game.fortifyTimer = 20*power;
+        addVFX('fortify_wave', game.vaultX, game.vaultY, {duration:1.5});
+      } else {
         for(let i=0;i<5;i++){
           let targets = game.enemies.filter(e=>e.alive);
           if(targets.length>0){
             let t = targets[Math.random()*targets.length|0];
             damageEnemy(t,100*power);
             addParticles(t.x,t.y,'#00f0ff',5);
+            addVFX('satellite_hit', t.x, t.y, {duration:1.2});
           }
         }
       } break;
     case 'lyra':
-      if(num===1){ game.marketSurgeTimer = 15*power; }
-      else { game.salvageTimer = 20*power; }
+      if(num===1){
+        game.marketSurgeTimer = 15*power;
+        addVFX('market_surge', game.vaultX, game.vaultY, {duration:2.0});
+      } else {
+        game.salvageTimer = 20*power;
+        addVFX('salvage_glow', 0, 0, {duration:2.0});
+      }
       break;
     case 'quinn':
-      if(num===1){ game.compoundInterest = true; }
-      else { game.blackMarketTimer = 20*power; updateShopCosts(); }
+      if(num===1){
+        game.compoundInterest = true;
+        addVFX('compound_interest', game.vaultX, game.vaultY, {duration:2.0});
+      } else {
+        game.blackMarketTimer = 20*power; updateShopCosts();
+        addVFX('black_market', game.mapW/2, 0, {duration:1.8});
+      }
       break;
     case 'mint':
       if(num===1){
@@ -1916,24 +2542,30 @@ function executeSkill(num, tx, ty){
         for(let i=0;i<Math.min(5,targets.length);i++){
           let idx = Math.random()*targets.length|0;
           targets[idx].marked = true;
+          addVFX('bounty_mark', targets[idx].x, targets[idx].y, {duration:1.5});
           targets.splice(idx,1);
         }
-      } else { game.economicBoomTimer = 15*power; }
+      } else {
+        game.economicBoomTimer = 15*power;
+        addVFX('economic_boom', game.vaultX, game.vaultY, {duration:1.5});
+      }
       break;
     case 'kaine':
       if(num===1){ // airstrike line
         let dmg = 250*power;
+        let cx = game.mapW/2, cy = game.mapH/2;
+        let dxk = tx-cx, dyk = ty-cy;
+        let lenk = Math.sqrt(dxk*dxk+dyk*dyk)||1;
+        // Extend line across full map
+        let sx = cx - dxk/lenk*game.mapW, sy = cy - dyk/lenk*game.mapH;
+        let ex = cx + dxk/lenk*game.mapW, ey = cy + dyk/lenk*game.mapH;
         for(let e of game.enemies){
           if(!e.alive) continue;
-          // line from tx,ty across map
-          let cx = game.mapW/2, cy = game.mapH/2;
-          let dx = tx-cx, dy = ty-cy;
-          let len = Math.sqrt(dx*dx+dy*dy)||1;
-          // distance from enemy to line through center and click point
-          let lineDistVal = Math.abs(dy*e.x - dx*e.y + dx*cy - dy*cx)/len;
+          let lineDistVal = Math.abs(dyk*e.x - dxk*e.y + dxk*cy - dyk*cx)/lenk;
           if(lineDistVal < 40) damageEnemy(e,dmg);
         }
         addParticles(tx,ty,'#ff6a00',15);
+        addVFX('airstrike_line', tx, ty, {duration:2.5, sx, sy, ex, ey});
       } else {
         let dmg = 150*power;
         for(let i=0;i<8;i++){
@@ -1942,6 +2574,7 @@ function executeSkill(num, tx, ty){
             let t = targets[Math.random()*targets.length|0];
             damageEnemy(t,dmg);
             addParticles(t.x,t.y,'#ff6a00',4);
+            addVFX('artillery_shell', t.x, t.y, {duration:1.2+i*0.1});
           }
         }
       } break;
@@ -1949,7 +2582,11 @@ function executeSkill(num, tx, ty){
       if(num===1){ // napalm
         game.effects.push({x:tx,y:ty,radius:60*power,dps:50*power,timer:10,color:'#ff6a00'});
         addParticles(tx,ty,'#ff6a00',12);
-      } else { game.gunshipTimer = 12*power; game.gunshipAngle = 0; }
+        addVFX('napalm_drop', tx, ty, {duration:3.0, radius:60*power});
+      } else {
+        game.gunshipTimer = 12*power; game.gunshipAngle = 0;
+        addVFX('gunship_arrive', 0, game.mapH*0.3, {duration:1.5});
+      }
       break;
     case 'steel':
       if(num===1){ // howitzer
@@ -1960,8 +2597,8 @@ function executeSkill(num, tx, ty){
           let d = dist(e.x,e.y,tx,ty);
           if(d<bd){bd=d;best=e;}
         }
-        if(best){ damageEnemy(best,dmg); addParticles(best.x,best.y,'#ff6a00',10); }
-        else addParticles(tx,ty,'#ff6a00',8);
+        if(best){ damageEnemy(best,dmg); addParticles(best.x,best.y,'#ff6a00',10); addVFX('howitzer_impact', best.x, best.y, {duration:2.0}); }
+        else { addParticles(tx,ty,'#ff6a00',8); addVFX('howitzer_impact', tx, ty, {duration:2.0}); }
       } else {
         let dmg = 80*power;
         for(let i=0;i<10;i++){
@@ -1971,30 +2608,32 @@ function executeSkill(num, tx, ty){
             if(e.alive && dist(e.x,e.y,ex,ey)<40) damageEnemy(e,dmg);
           }
           addParticles(ex,ey,'#ff6a00',3);
+          addVFX('cluster_bomb', ex, ey, {duration:1.5+i*0.06, index:i});
         }
       } break;
     case 'nova':
       if(num===1){ // singularity - pull + damage
         game.effects.push({x:tx,y:ty,radius:80*power,dps:100*power,timer:6,color:'#b44aff'});
-        // pull enemies
         let pullInterval = setInterval(()=>{
           if(!game||!game.running){clearInterval(pullInterval);return;}
           for(let e of game.enemies){
             if(!e.alive) continue;
             let d = dist(e.x,e.y,tx,ty);
             if(d<120*power && d>5){
-              let dx=(tx-e.x)/d, dy=(ty-e.y)/d;
-              e.x += dx*40*0.016; e.y += dy*40*0.016;
+              let dx2=(tx-e.x)/d, dy2=(ty-e.y)/d;
+              e.x += dx2*40*0.016; e.y += dy2*40*0.016;
             }
           }
         },16);
         setTimeout(()=>clearInterval(pullInterval),6000);
         addParticles(tx,ty,'#b44aff',15);
+        addVFX('singularity', tx, ty, {duration:6.0, radius:80*power});
       } else { // nuke
         let dmg = 500*power;
         for(let e of game.enemies){ if(e.alive && dist(e.x,e.y,tx,ty)<120*power) damageEnemy(e,dmg); }
         game.effects.push({x:tx,y:ty,radius:120*power,dps:30*power,timer:10,color:'#39ff14'});
         addParticles(tx,ty,'#ff2d7b',25);
+        addVFX('nuke', tx, ty, {duration:3.5, radius:120*power});
       } break;
     case 'flux':
       if(num===1){ // deploy temp turret
@@ -2003,23 +2642,29 @@ function executeSkill(num, tx, ty){
           customData:{ damage:60*power, fireRate:0.15, range:180, color:'#b44aff', projColor:'#b44aff', projSpeed:500, aoe:0, slow:0, chain:0, dot:0, beam:false }
         });
         addParticles(tx,ty,'#b44aff',8);
+        addVFX('exp_turret_spawn', tx, ty, {duration:1.5});
       } else { // antimatter
         let dmg = 400*power;
         for(let e of game.enemies){ if(e.alive && dist(e.x,e.y,tx,ty)<80*power) damageEnemy(e,dmg); }
         addParticles(tx,ty,'#b44aff',20);
+        addVFX('antimatter', tx, ty, {duration:2.0, radius:80*power});
       } break;
     case 'echo':
-      if(num===1){ game.phaseShieldTimer = 8*power; addParticles(game.vaultX,game.vaultY,'#b44aff',12); }
-      else { // particle cannon line
+      if(num===1){
+        game.phaseShieldTimer = 8*power;
+        addParticles(game.vaultX,game.vaultY,'#b44aff',12);
+        addVFX('phase_shield_activate', game.vaultX, game.vaultY, {duration:2.0});
+      } else { // particle cannon line
         let dmg = 200*power;
-        let dx = tx-game.vaultX, dy = ty-game.vaultY;
-        let len = Math.sqrt(dx*dx+dy*dy)||1;
+        let dx3 = tx-game.vaultX, dy3 = ty-game.vaultY;
+        let len3 = Math.sqrt(dx3*dx3+dy3*dy3)||1;
         for(let e of game.enemies){
           if(!e.alive) continue;
-          let lineDist = Math.abs(dy*e.x - dx*e.y + dx*game.vaultY - dy*game.vaultX)/len;
+          let lineDist = Math.abs(dy3*e.x - dx3*e.y + dx3*game.vaultY - dy3*game.vaultX)/len3;
           if(lineDist < 25) damageEnemy(e,dmg);
         }
         addParticles(tx,ty,'#b44aff',10);
+        addVFX('particle_beam', tx, ty, {duration:1.2, tx:tx, ty:ty});
       } break;
   }
 }
