@@ -767,7 +767,15 @@ function createGame(commanderId){
     running: true,
     vaultX: 0, vaultY: 0,
     gridSize: 40,
-    mapW: 0, mapH: 0
+    mapW: 0, mapH: 0,
+    screenShake: 0,
+    screenShakeIntensity: 0,
+    floatingTexts: [],
+    killCombo: 0,
+    killComboTimer: 0,
+    skillBanner: null,
+    skillBannerTimer: 0,
+    vaultHitFlash: 0
   };
 }
 
@@ -858,6 +866,9 @@ function updateEnemies(dt){
       e.alive = false;
       game.enemiesRemaining--;
       addParticles(e.x, e.y, '#ff2d7b', 8);
+      triggerShake(3, 0.2);
+      addFloatingText(e.x, e.y, '-'+stolen+' CR', '#ff2d7b', 14);
+      game.vaultHitFlash = 0.3;
       if(game.credits <= 0){ game.credits = 0; gameOver(); return; }
       continue;
     }
@@ -925,6 +936,7 @@ function damageEnemy(e, dmg){
     let absorbed = Math.min(e.shield, dmg);
     e.shield -= absorbed;
     dmg -= absorbed;
+    if(absorbed > 0 && dmg === 0) addFloatingText(e.x, e.y-5, 'SHIELD', '#8888ff', 9);
   }
   e.hp -= dmg;
   if(e.hp <= 0){
@@ -938,7 +950,27 @@ function damageEnemy(e, dmg){
     if(game.salvageTimer > 0) bounty += 50;
     game.credits += bounty;
     game.score += bounty;
-    addParticles(e.x, e.y, e.color, 6);
+    // Enhanced death effect
+    addParticles(e.x, e.y, e.color, 10);
+    addParticles(e.x, e.y, '#ffffff', 4);
+    // Death ring
+    addVFX('enemy_death_ring', e.x, e.y, {duration:0.6, color:e.color, radius:e.radius});
+    if(e.type === 'boss'){
+      addParticles(e.x, e.y, e.color, 25);
+      addParticles(e.x, e.y, '#ff6a00', 15);
+      addParticles(e.x, e.y, '#ffffff', 10);
+      triggerShake(8, 0.4);
+      addFloatingText(e.x, e.y-30, 'BOSS KILLED!', '#ff2d7b', 20);
+    }
+    addFloatingText(e.x, e.y, '+'+bounty+' CR', '#39ff14', 11);
+    game.killCombo++;
+    game.killComboTimer = 2.0;
+    if(game.killCombo >= 3){
+      addFloatingText(e.x, e.y - 20, game.killCombo + 'x COMBO!', '#ff2d7b', 14 + Math.min(game.killCombo, 10));
+    }
+    if(game.killCombo === 5) addFloatingText(e.x, e.y-35, 'RAMPAGE!', '#ff6a00', 16);
+    if(game.killCombo === 10) addFloatingText(e.x, e.y-35, 'UNSTOPPABLE!', '#b44aff', 18);
+    if(game.killCombo === 20) addFloatingText(e.x, e.y-35, 'GODLIKE!', '#00f0ff', 22);
   }
 }
 
@@ -1088,6 +1120,12 @@ function updateParticles(dt){
     p.life -= dt;
   }
   game.particles = game.particles.filter(p=>p.life>0);
+  for(let ft of game.floatingTexts){
+    ft.y += ft.vy * dt;
+    ft.vy *= 0.95;
+    ft.life -= dt;
+  }
+  game.floatingTexts = game.floatingTexts.filter(ft => ft.life > 0);
 }
 
 // ---- SKILL VFX SYSTEM ----
@@ -1098,6 +1136,24 @@ function addVFX(type, x, y, opts){
 function updateVFX(dt){
   for(let v of game.skillVFX){ v.time += dt; }
   game.skillVFX = game.skillVFX.filter(v => v.time < v.duration);
+}
+
+function triggerShake(intensity, duration){
+  game.screenShake = duration || 0.3;
+  game.screenShakeIntensity = intensity || 5;
+}
+
+function addFloatingText(x, y, text, color, size){
+  game.floatingTexts.push({
+    x: x + (Math.random()-0.5)*20,
+    y: y - 10,
+    text: text,
+    color: color || '#ffffff',
+    size: size || 12,
+    life: 1.0,
+    maxLife: 1.0,
+    vy: -40 - Math.random()*20
+  });
 }
 
 function drawVFX(){
@@ -1607,6 +1663,23 @@ function drawVFX(){
           ctx.fillStyle = 'rgba(57,255,20,'+a*(0.4+0.4*Math.sin(now/150))+')'; ctx.fill();
         }
       } break;
+
+      case 'enemy_death_ring': {
+        let a = Math.max(0, 1 - p*1.5);
+        let r = (v.radius||8) + p * 30;
+        ctx.beginPath(); ctx.arc(v.x, v.y, r, 0, Math.PI*2);
+        ctx.strokeStyle = (v.color||'#ffffff');
+        ctx.globalAlpha = a;
+        ctx.lineWidth = 2 * (1-p);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+        // Inner flash
+        if(p < 0.2){
+          ctx.beginPath(); ctx.arc(v.x, v.y, (v.radius||8) * (1-p*5), 0, Math.PI*2);
+          ctx.fillStyle = 'rgba(255,255,255,' + (0.6-p*3) + ')';
+          ctx.fill();
+        }
+      } break;
     }
 
     ctx.restore();
@@ -1648,6 +1721,10 @@ function updateTimers(dt){
   }
   if(game.skill1CD > 0) game.skill1CD -= dt;
   if(game.skill2CD > 0) game.skill2CD -= dt;
+  if(game.screenShake > 0) game.screenShake -= dt;
+  if(game.killComboTimer > 0){ game.killComboTimer -= dt; } else { game.killCombo = 0; }
+  if(game.skillBannerTimer > 0) game.skillBannerTimer -= dt;
+  if(game.vaultHitFlash > 0) game.vaultHitFlash -= dt;
 }
 
 function spawnEnemies(dt){
@@ -1712,12 +1789,38 @@ function render(){
   // Background
   ctx.fillStyle = '#080e18';
   ctx.fillRect(0,0,canvas.width,canvas.height);
+  // Screen shake
+  if(game.screenShake > 0){
+    let s = game.screenShakeIntensity * (game.screenShake / 0.3);
+    ctx.save();
+    ctx.translate(Math.sin(Date.now()*0.1)*s, Math.cos(Date.now()*0.13)*s);
+  }
   // Grid
   ctx.strokeStyle = 'rgba(0,240,255,0.06)';
   ctx.lineWidth = 0.5;
   let gs = game.gridSize;
   for(let x=0; x<canvas.width; x+=gs){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvas.height); ctx.stroke(); }
   for(let y=0; y<canvas.height; y+=gs){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(canvas.width,y); ctx.stroke(); }
+
+  // Ambient floating dust particles
+  let now3 = Date.now();
+  for(let i=0;i<15;i++){
+    let ax = (Math.sin(now3/3000+i*2.3)*0.5+0.5) * canvas.width;
+    let ay = (Math.cos(now3/4000+i*1.7)*0.5+0.5) * canvas.height;
+    let as = 1 + Math.sin(now3/2000+i)*0.5;
+    ctx.beginPath(); ctx.arc(ax, ay, as, 0, Math.PI*2);
+    ctx.fillStyle = 'rgba(0,240,255,0.04)';
+    ctx.fill();
+  }
+  // Grid pulse from vault
+  if(game.waveActive){
+    let pulseR = ((now3/1000) % 3) / 3 * Math.max(canvas.width, canvas.height);
+    let pulseA = Math.max(0, 0.08 * (1 - pulseR/Math.max(canvas.width, canvas.height)));
+    ctx.beginPath(); ctx.arc(game.vaultX, game.vaultY, pulseR, 0, Math.PI*2);
+    ctx.strokeStyle = 'rgba(0,240,255,' + pulseA + ')';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
 
   // Area effects (napalm, radiation) - enhanced
   for(let ef of game.effects){
@@ -1796,25 +1899,73 @@ function render(){
     ctx.lineWidth = 1;
   }
 
-  // Vault
+  // Vault - enhanced
   let vPulse = 0.7 + 0.3 * Math.sin(Date.now()/500);
-  let vaultGrad = ctx.createRadialGradient(game.vaultX, game.vaultY, 5, game.vaultX, game.vaultY, 35);
+  let now4 = Date.now();
+  // Outer energy field
+  for(let i=0;i<3;i++){
+    let or2 = 35 + i*8;
+    let oa = vPulse * (0.12 - i*0.03);
+    ctx.beginPath(); ctx.arc(game.vaultX, game.vaultY, or2, 0, Math.PI*2);
+    ctx.strokeStyle = 'rgba(0,240,255,' + oa + ')';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+  // Rotating energy arcs
+  for(let i=0;i<4;i++){
+    let ra = now4/1500 + Math.PI/2*i;
+    ctx.beginPath(); ctx.arc(game.vaultX, game.vaultY, 30, ra, ra+Math.PI*0.3);
+    ctx.strokeStyle = 'rgba(0,240,255,' + vPulse*0.3 + ')';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+  // Main glow
+  let vaultGrad = ctx.createRadialGradient(game.vaultX, game.vaultY, 3, game.vaultX, game.vaultY, 40);
   vaultGrad.addColorStop(0, 'rgba(0,240,255,'+vPulse+')');
-  vaultGrad.addColorStop(0.5, 'rgba(0,240,255,0.15)');
+  vaultGrad.addColorStop(0.3, 'rgba(0,240,255,0.3)');
+  vaultGrad.addColorStop(0.6, 'rgba(0,240,255,0.08)');
   vaultGrad.addColorStop(1, 'transparent');
   ctx.beginPath();
-  ctx.arc(game.vaultX, game.vaultY, 35, 0, Math.PI*2);
+  ctx.arc(game.vaultX, game.vaultY, 40, 0, Math.PI*2);
   ctx.fillStyle = vaultGrad;
   ctx.fill();
+  // Core hexagon
+  ctx.save(); ctx.translate(game.vaultX, game.vaultY);
+  ctx.rotate(now4/5000);
   ctx.beginPath();
-  ctx.arc(game.vaultX, game.vaultY, 15, 0, Math.PI*2);
-  ctx.fillStyle = 'rgba(0,240,255,0.8)';
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(0,240,255,0.4)';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.arc(game.vaultX, game.vaultY, 25, 0, Math.PI*2);
+  for(let i=0;i<6;i++){ let a=Math.PI/3*i; ctx.lineTo(Math.cos(a)*18, Math.sin(a)*18); }
+  ctx.closePath();
+  ctx.strokeStyle = 'rgba(0,240,255,' + vPulse*0.5 + ')';
+  ctx.lineWidth = 1.5;
   ctx.stroke();
+  // Inner hexagon rotating opposite
+  ctx.rotate(-now4/2500);
+  ctx.beginPath();
+  for(let i=0;i<6;i++){ let a=Math.PI/3*i+Math.PI/6; ctx.lineTo(Math.cos(a)*12, Math.sin(a)*12); }
+  ctx.closePath();
+  ctx.strokeStyle = 'rgba(0,240,255,' + vPulse*0.7 + ')';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.restore();
+  // Bright core
+  ctx.beginPath();
+  ctx.arc(game.vaultX, game.vaultY, 8, 0, Math.PI*2);
+  let coreGrad = ctx.createRadialGradient(game.vaultX,game.vaultY,0,game.vaultX,game.vaultY,8);
+  coreGrad.addColorStop(0, 'rgba(255,255,255,'+vPulse+')');
+  coreGrad.addColorStop(0.5, 'rgba(0,240,255,'+vPulse*0.8+')');
+  coreGrad.addColorStop(1, 'rgba(0,240,255,0)');
+  ctx.fillStyle = coreGrad;
+  ctx.fill();
+  // Energy wisps
+  for(let i=0;i<6;i++){
+    let wa = now4/800 + Math.PI*2/6*i;
+    let wr = 22 + Math.sin(now4/600+i*1.5)*5;
+    let wx = game.vaultX + Math.cos(wa)*wr;
+    let wy = game.vaultY + Math.sin(wa)*wr;
+    ctx.beginPath(); ctx.arc(wx, wy, 1.5, 0, Math.PI*2);
+    ctx.fillStyle = 'rgba(0,240,255,' + vPulse*0.5 + ')';
+    ctx.fill();
+  }
 
   // Turrets
   let allT = [...game.turrets, ...game.tempTurrets];
@@ -2234,19 +2385,38 @@ function render(){
     }
   }
 
-  // Projectiles
+  // Projectiles - enhanced
   for(let p of game.projectiles){
+    // Glow
+    let grd = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, 6);
+    grd.addColorStop(0, p.color);
+    grd.addColorStop(1, 'transparent');
+    ctx.fillStyle = grd;
+    ctx.beginPath(); ctx.arc(p.x, p.y, 6, 0, Math.PI*2); ctx.fill();
+    // Core
     ctx.beginPath();
-    ctx.arc(p.x, p.y, 3, 0, Math.PI*2);
+    ctx.arc(p.x, p.y, 2.5, 0, Math.PI*2);
+    ctx.fillStyle = '#ffffff';
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 3.5, 0, Math.PI*2);
     ctx.fillStyle = p.color;
     ctx.fill();
-    // trail
+    // Trail
     ctx.beginPath();
     ctx.moveTo(p.x, p.y);
-    ctx.lineTo(p.x - p.vx*0.02, p.y - p.vy*0.02);
+    ctx.lineTo(p.x - p.vx*0.04, p.y - p.vy*0.04);
     ctx.strokeStyle = p.color;
-    ctx.lineWidth = 1.5;
-    ctx.globalAlpha = 0.5;
+    ctx.lineWidth = 2;
+    ctx.globalAlpha = 0.4;
+    ctx.stroke();
+    // Second trail (thinner, longer)
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+    ctx.lineTo(p.x - p.vx*0.07, p.y - p.vy*0.07);
+    ctx.strokeStyle = p.color;
+    ctx.lineWidth = 0.8;
+    ctx.globalAlpha = 0.2;
     ctx.stroke();
     ctx.globalAlpha = 1;
   }
@@ -2261,6 +2431,22 @@ function render(){
     ctx.fill();
     ctx.globalAlpha = 1;
   }
+
+  // Floating texts
+  for(let ft of game.floatingTexts){
+    let alpha = Math.min(1, ft.life / ft.maxLife * 2);
+    let scale = 0.8 + 0.4 * (1 - ft.life/ft.maxLife);
+    ctx.font = 'bold ' + Math.round(ft.size * scale) + 'px Orbitron, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = ft.color;
+    ctx.globalAlpha = alpha;
+    ctx.fillText(ft.text, ft.x, ft.y);
+    // Shadow for readability
+    ctx.fillStyle = 'rgba(0,0,0,' + alpha*0.5 + ')';
+    ctx.fillText(ft.text, ft.x+1, ft.y+1);
+    ctx.globalAlpha = 1;
+  }
+  ctx.textAlign = 'start';
 
   // Skill VFX
   drawVFX();
@@ -2357,6 +2543,41 @@ function render(){
     ctx.lineWidth=1;
     ctx.stroke();
   }
+
+  // Skill activation banner
+  if(game.skillBannerTimer > 0 && game.skillBanner){
+    let bp = game.skillBannerTimer / 1.5;
+    let ba = bp > 0.8 ? (1-bp)*5 : bp > 0.2 ? 1 : bp*5;
+    let bx = canvas.width/2;
+    let by = 100;
+    // Background bar
+    ctx.fillStyle = 'rgba(5,10,18,' + ba*0.7 + ')';
+    ctx.fillRect(0, by-20, canvas.width, 40);
+    // Side lines
+    ctx.fillStyle = game.skillBanner.color;
+    ctx.globalAlpha = ba * 0.6;
+    ctx.fillRect(0, by-20, canvas.width * (1-bp) * 0.5, 2);
+    ctx.fillRect(canvas.width - canvas.width * (1-bp) * 0.5, by+18, canvas.width * (1-bp) * 0.5, 2);
+    ctx.globalAlpha = 1;
+    // Text
+    ctx.font = 'bold 18px Orbitron, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = game.skillBanner.color;
+    ctx.globalAlpha = ba;
+    ctx.fillText(game.skillBanner.name.toUpperCase(), bx, by+6);
+    ctx.globalAlpha = 1;
+    ctx.textAlign = 'start';
+  }
+
+  // Vault hit flash (red overlay)
+  if(game.vaultHitFlash > 0){
+    let fa = game.vaultHitFlash / 0.3 * 0.15;
+    ctx.fillStyle = 'rgba(255,0,0,' + fa + ')';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+
+  // End screen shake
+  if(game.screenShake > 0) ctx.restore();
 }
 
 // ============================================================
@@ -2475,6 +2696,11 @@ function executeSkill(num, tx, ty){
   game.skillTargeting = null;
   document.querySelectorAll('.skill-btn').forEach(b=>b.classList.remove('targeting'));
 
+  let skillData = num===1 ? cmd.skill1 : cmd.skill2;
+  let groupColor = COMMANDER_GROUPS.find(g=>g.id===cmd.group).color;
+  game.skillBanner = { name: skillData.name, color: groupColor };
+  game.skillBannerTimer = 1.5;
+
   switch(cmd.id){
     case 'vex':
       if(num===1){
@@ -2486,6 +2712,7 @@ function executeSkill(num, tx, ty){
         addParticles(tx,ty,'#00f0ff',20);
         game.effects.push({x:tx,y:ty,radius:80*power,dps:0,timer:0.5,color:'#00f0ff'});
         addVFX('orbital_strike', tx, ty, {duration:2.0, radius:80*power});
+        triggerShake(8, 0.4);
       } break;
     case 'raze':
       if(num===1){
@@ -2502,6 +2729,7 @@ function executeSkill(num, tx, ty){
         for(let e of game.enemies){ if(e.alive) damageEnemy(e,dmg); }
         addParticles(game.vaultX,game.vaultY,'#00f0ff',15);
         addVFX('ion_sweep', game.vaultX, game.vaultY, {duration:1.5, dir:1});
+        triggerShake(5, 0.3);
       } break;
     case 'forge':
       if(num===1){
@@ -2517,6 +2745,7 @@ function executeSkill(num, tx, ty){
             addVFX('satellite_hit', t.x, t.y, {duration:1.2});
           }
         }
+        triggerShake(4, 0.3);
       } break;
     case 'lyra':
       if(num===1){
@@ -2566,8 +2795,8 @@ function executeSkill(num, tx, ty){
         }
         addParticles(tx,ty,'#ff6a00',15);
         addVFX('airstrike_line', tx, ty, {duration:2.5, sx, sy, ex, ey});
+        triggerShake(7, 0.5);
       } else {
-        let dmg = 150*power;
         for(let i=0;i<8;i++){
           let targets = game.enemies.filter(e=>e.alive);
           if(targets.length>0){
@@ -2577,14 +2806,15 @@ function executeSkill(num, tx, ty){
             addVFX('artillery_shell', t.x, t.y, {duration:1.2+i*0.1});
           }
         }
+        triggerShake(5, 0.4);
       } break;
     case 'havoc':
       if(num===1){ // napalm
         game.effects.push({x:tx,y:ty,radius:60*power,dps:50*power,timer:10,color:'#ff6a00'});
         addParticles(tx,ty,'#ff6a00',12);
         addVFX('napalm_drop', tx, ty, {duration:3.0, radius:60*power});
-      } else {
-        game.gunshipTimer = 12*power; game.gunshipAngle = 0;
+        triggerShake(6, 0.3);
+      } else { game.gunshipAngle = 0;
         addVFX('gunship_arrive', 0, game.mapH*0.3, {duration:1.5});
       }
       break;
@@ -2599,6 +2829,7 @@ function executeSkill(num, tx, ty){
         }
         if(best){ damageEnemy(best,dmg); addParticles(best.x,best.y,'#ff6a00',10); addVFX('howitzer_impact', best.x, best.y, {duration:2.0}); }
         else { addParticles(tx,ty,'#ff6a00',8); addVFX('howitzer_impact', tx, ty, {duration:2.0}); }
+        triggerShake(12, 0.5);
       } else {
         let dmg = 80*power;
         for(let i=0;i<10;i++){
@@ -2610,6 +2841,7 @@ function executeSkill(num, tx, ty){
           addParticles(ex,ey,'#ff6a00',3);
           addVFX('cluster_bomb', ex, ey, {duration:1.5+i*0.06, index:i});
         }
+        triggerShake(6, 0.5);
       } break;
     case 'nova':
       if(num===1){ // singularity - pull + damage
@@ -2628,12 +2860,14 @@ function executeSkill(num, tx, ty){
         setTimeout(()=>clearInterval(pullInterval),6000);
         addParticles(tx,ty,'#b44aff',15);
         addVFX('singularity', tx, ty, {duration:6.0, radius:80*power});
+        triggerShake(4, 0.5);
       } else { // nuke
         let dmg = 500*power;
         for(let e of game.enemies){ if(e.alive && dist(e.x,e.y,tx,ty)<120*power) damageEnemy(e,dmg); }
         game.effects.push({x:tx,y:ty,radius:120*power,dps:30*power,timer:10,color:'#39ff14'});
         addParticles(tx,ty,'#ff2d7b',25);
         addVFX('nuke', tx, ty, {duration:3.5, radius:120*power});
+        triggerShake(15, 0.7);
       } break;
     case 'flux':
       if(num===1){ // deploy temp turret
@@ -2648,6 +2882,7 @@ function executeSkill(num, tx, ty){
         for(let e of game.enemies){ if(e.alive && dist(e.x,e.y,tx,ty)<80*power) damageEnemy(e,dmg); }
         addParticles(tx,ty,'#b44aff',20);
         addVFX('antimatter', tx, ty, {duration:2.0, radius:80*power});
+        triggerShake(10, 0.4);
       } break;
     case 'echo':
       if(num===1){
@@ -2665,6 +2900,7 @@ function executeSkill(num, tx, ty){
         }
         addParticles(tx,ty,'#b44aff',10);
         addVFX('particle_beam', tx, ty, {duration:1.2, tx:tx, ty:ty});
+        triggerShake(5, 0.3);
       } break;
   }
 }
