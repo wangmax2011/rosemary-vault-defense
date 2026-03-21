@@ -72,9 +72,10 @@ html, body { width:100%; height:100%; overflow:hidden; background:var(--bg-dark)
 /* COMMANDER SELECT SCREEN */
 #commander-screen {
   position:absolute; inset:0; display:none; flex-direction:column;
-  align-items:center; justify-content:center; z-index:100;
+  align-items:center; justify-content:flex-start; z-index:100; padding-top:2rem;
   background: radial-gradient(ellipse at 50% 40%, rgba(0,240,255,0.04) 0%, transparent 60%),
               linear-gradient(180deg, #050a12 0%, #0a1628 50%, #050a12 100%);
+  overflow-y:auto;
 }
 .cmd-title {
   font-family:'Orbitron',sans-serif; font-weight:700; font-size:clamp(1.2rem,3vw,2rem);
@@ -82,13 +83,35 @@ html, body { width:100%; height:100%; overflow:hidden; background:var(--bg-dark)
   text-shadow: 0 0 15px var(--neon-cyan);
 }
 .cmd-subtitle {
-  font-size:0.75rem; color:#5a7a8a; letter-spacing:0.2em; margin-bottom:2rem;
+  font-size:0.75rem; color:#5a7a8a; letter-spacing:0.2em; margin-bottom:1rem;
 }
+
+/* Group tabs */
+#cmd-group-tabs {
+  display:flex; gap:0; margin-bottom:1.5rem; border:1px solid rgba(255,255,255,0.1); border-radius:6px; overflow:hidden;
+}
+.cmd-group-tab {
+  padding:0.6rem 1.5rem; font-family:'Orbitron',sans-serif; font-size:0.65rem;
+  letter-spacing:0.15em; cursor:pointer; transition:all 0.3s;
+  background:rgba(8,16,32,0.8); border-right:1px solid rgba(255,255,255,0.08);
+}
+.cmd-group-tab:last-child { border-right:none; }
+.cmd-group-tab:hover { background:rgba(255,255,255,0.05); }
+.cmd-group-tab.active { color:#fff; }
+.cmd-group-tab[data-group="technicians"] { color:#00f0ff; }
+.cmd-group-tab[data-group="technicians"].active { background:rgba(0,240,255,0.15); border-color:rgba(0,240,255,0.3); }
+.cmd-group-tab[data-group="economists"] { color:#39ff14; }
+.cmd-group-tab[data-group="economists"].active { background:rgba(57,255,20,0.15); border-color:rgba(57,255,20,0.3); }
+.cmd-group-tab[data-group="generals"] { color:#ff6a00; }
+.cmd-group-tab[data-group="generals"].active { background:rgba(255,106,0,0.15); border-color:rgba(255,106,0,0.3); }
+.cmd-group-tab[data-group="scientists"] { color:#b44aff; }
+.cmd-group-tab[data-group="scientists"].active { background:rgba(180,74,255,0.15); border-color:rgba(180,74,255,0.3); }
+
 #commander-cards {
   display:flex; gap:1.2rem; flex-wrap:wrap; justify-content:center; padding:0 2rem; max-width:1200px;
 }
 .cmd-card {
-  width:240px; padding:1.5rem 1.2rem; border:1px solid rgba(255,255,255,0.08);
+  width:260px; padding:1.5rem 1.2rem; border:1px solid rgba(255,255,255,0.08);
   border-radius:8px; cursor:pointer; transition:all 0.4s; position:relative;
   background:rgba(8,16,32,0.8); overflow:hidden;
 }
@@ -104,6 +127,9 @@ html, body { width:100%; height:100%; overflow:hidden; background:var(--bg-dark)
   font-family:'Orbitron',sans-serif; font-weight:700; font-size:1rem;
   letter-spacing:0.15em; margin-bottom:0.2rem;
 }
+.cmd-card .cmd-group-label {
+  font-size:0.55rem; letter-spacing:0.2em; margin-bottom:0.3rem; opacity:0.6;
+}
 .cmd-card .cmd-role {
   font-size:0.65rem; letter-spacing:0.2em; margin-bottom:0.8rem; opacity:0.7;
 }
@@ -118,33 +144,32 @@ html, body { width:100%; height:100%; overflow:hidden; background:var(--bg-dark)
 .cmd-card .cmd-skill .skill-info { color:#5a7a8a; font-size:0.6rem; margin-top:0.15rem; }
 .cmd-card .cmd-key { font-size:0.55rem; color:#3a5a6a; margin-top:0.2rem; }
 
-/* Card color themes */
-.cmd-card[data-cmd="vex"] .cmd-name { color:#00f0ff; }
-.cmd-card[data-cmd="vex"]::before { background:radial-gradient(ellipse at 50% 0%, rgba(0,240,255,0.12) 0%, transparent 70%); border-color:rgba(0,240,255,0.3); }
-.cmd-card[data-cmd="vex"].selected, .cmd-card[data-cmd="vex"]:hover { border-color:rgba(0,240,255,0.5); box-shadow:0 0 30px rgba(0,240,255,0.15); }
-.cmd-card[data-cmd="vex"] .cmd-role { color:#00f0ff; }
-.cmd-card[data-cmd="vex"] .skill-name { color:#00f0ff; }
+/* Card color themes - technicians cyan */
+.cmd-card.group-technicians .cmd-name { color:#00f0ff; }
+.cmd-card.group-technicians::before { background:radial-gradient(ellipse at 50% 0%, rgba(0,240,255,0.12) 0%, transparent 70%); }
+.cmd-card.group-technicians.selected, .cmd-card.group-technicians:hover { border-color:rgba(0,240,255,0.5); box-shadow:0 0 30px rgba(0,240,255,0.15); }
+.cmd-card.group-technicians .cmd-role, .cmd-card.group-technicians .skill-name, .cmd-card.group-technicians .cmd-group-label { color:#00f0ff; }
 
-.cmd-card[data-cmd="lyra"] .cmd-name { color:#39ff14; }
-.cmd-card[data-cmd="lyra"]::before { background:radial-gradient(ellipse at 50% 0%, rgba(57,255,20,0.12) 0%, transparent 70%); border-color:rgba(57,255,20,0.3); }
-.cmd-card[data-cmd="lyra"].selected, .cmd-card[data-cmd="lyra"]:hover { border-color:rgba(57,255,20,0.5); box-shadow:0 0 30px rgba(57,255,20,0.15); }
-.cmd-card[data-cmd="lyra"] .cmd-role { color:#39ff14; }
-.cmd-card[data-cmd="lyra"] .skill-name { color:#39ff14; }
+/* economists green */
+.cmd-card.group-economists .cmd-name { color:#39ff14; }
+.cmd-card.group-economists::before { background:radial-gradient(ellipse at 50% 0%, rgba(57,255,20,0.12) 0%, transparent 70%); }
+.cmd-card.group-economists.selected, .cmd-card.group-economists:hover { border-color:rgba(57,255,20,0.5); box-shadow:0 0 30px rgba(57,255,20,0.15); }
+.cmd-card.group-economists .cmd-role, .cmd-card.group-economists .skill-name, .cmd-card.group-economists .cmd-group-label { color:#39ff14; }
 
-.cmd-card[data-cmd="kaine"] .cmd-name { color:#ff6a00; }
-.cmd-card[data-cmd="kaine"]::before { background:radial-gradient(ellipse at 50% 0%, rgba(255,106,0,0.12) 0%, transparent 70%); border-color:rgba(255,106,0,0.3); }
-.cmd-card[data-cmd="kaine"].selected, .cmd-card[data-cmd="kaine"]:hover { border-color:rgba(255,106,0,0.5); box-shadow:0 0 30px rgba(255,106,0,0.15); }
-.cmd-card[data-cmd="kaine"] .cmd-role { color:#ff6a00; }
-.cmd-card[data-cmd="kaine"] .skill-name { color:#ff6a00; }
+/* generals orange */
+.cmd-card.group-generals .cmd-name { color:#ff6a00; }
+.cmd-card.group-generals::before { background:radial-gradient(ellipse at 50% 0%, rgba(255,106,0,0.12) 0%, transparent 70%); }
+.cmd-card.group-generals.selected, .cmd-card.group-generals:hover { border-color:rgba(255,106,0,0.5); box-shadow:0 0 30px rgba(255,106,0,0.15); }
+.cmd-card.group-generals .cmd-role, .cmd-card.group-generals .skill-name, .cmd-card.group-generals .cmd-group-label { color:#ff6a00; }
 
-.cmd-card[data-cmd="nova"] .cmd-name { color:#b44aff; }
-.cmd-card[data-cmd="nova"]::before { background:radial-gradient(ellipse at 50% 0%, rgba(180,74,255,0.12) 0%, transparent 70%); border-color:rgba(180,74,255,0.3); }
-.cmd-card[data-cmd="nova"].selected, .cmd-card[data-cmd="nova"]:hover { border-color:rgba(180,74,255,0.5); box-shadow:0 0 30px rgba(180,74,255,0.15); }
-.cmd-card[data-cmd="nova"] .cmd-role { color:#b44aff; }
-.cmd-card[data-cmd="nova"] .skill-name { color:#b44aff; }
+/* scientists purple */
+.cmd-card.group-scientists .cmd-name { color:#b44aff; }
+.cmd-card.group-scientists::before { background:radial-gradient(ellipse at 50% 0%, rgba(180,74,255,0.12) 0%, transparent 70%); }
+.cmd-card.group-scientists.selected, .cmd-card.group-scientists:hover { border-color:rgba(180,74,255,0.5); box-shadow:0 0 30px rgba(180,74,255,0.15); }
+.cmd-card.group-scientists .cmd-role, .cmd-card.group-scientists .skill-name, .cmd-card.group-scientists .cmd-group-label { color:#b44aff; }
 
 #deploy-btn {
-  margin-top:2rem; padding:0.8rem 2.5rem; background:transparent;
+  margin-top:1.5rem; margin-bottom:2rem; padding:0.8rem 2.5rem; background:transparent;
   border:1px solid var(--neon-green); color:var(--neon-green);
   font-family:'Orbitron',sans-serif; font-size:0.75rem; letter-spacing:0.2em;
   cursor:pointer; transition:all 0.3s; opacity:0.3; pointer-events:none;
@@ -395,6 +420,7 @@ html, body { width:100%; height:100%; overflow:hidden; background:var(--bg-dark)
   <div id="commander-screen">
     <div class="cmd-title">SELECT COMMANDER</div>
     <div class="cmd-subtitle">CHOOSE YOUR TACTICAL OFFICER</div>
+    <div id="cmd-group-tabs"></div>
     <div id="commander-cards"></div>
     <button id="deploy-btn" onclick="deployCommander()">DEPLOY COMMANDER</button>
   </div>
@@ -402,7 +428,7 @@ html, body { width:100%; height:100%; overflow:hidden; background:var(--bg-dark)
     <div id="hud">
       <div id="hud-left">
         <span id="wave-display">WAVE 1</span>
-        <span id="wave-status">INCOMING</span>
+        <span id="wave-status">BUILD PHASE</span>
         <span id="commander-label"></span>
       </div>
       <div id="hud-center">
@@ -432,7 +458,7 @@ html, body { width:100%; height:100%; overflow:hidden; background:var(--bg-dark)
           <div class="item-info">
             <div class="item-name">LASER SENTRY</div>
             <div class="item-cost" id="cost-laser">500 CR</div>
-            <div class="item-desc">Fast shots, low DMG</div>
+            <div class="item-desc">Fast shots, low DMG | HP:80</div>
           </div>
           <div class="hotkey">[1]</div>
         </div>
@@ -441,7 +467,7 @@ html, body { width:100%; height:100%; overflow:hidden; background:var(--bg-dark)
           <div class="item-info">
             <div class="item-name">PLASMA TURRET</div>
             <div class="item-cost" id="cost-plasma">1200 CR</div>
-            <div class="item-desc">Area damage, medium</div>
+            <div class="item-desc">Area damage, medium | HP:150</div>
           </div>
           <div class="hotkey">[2]</div>
         </div>
@@ -450,7 +476,7 @@ html, body { width:100%; height:100%; overflow:hidden; background:var(--bg-dark)
           <div class="item-info">
             <div class="item-name">EMP DRONE</div>
             <div class="item-cost" id="cost-emp">2000 CR</div>
-            <div class="item-desc">Slows enemies</div>
+            <div class="item-desc">Slows enemies | HP:100</div>
           </div>
           <div class="hotkey">[3]</div>
         </div>
@@ -459,7 +485,7 @@ html, body { width:100%; height:100%; overflow:hidden; background:var(--bg-dark)
           <div class="item-info">
             <div class="item-name">TESLA COIL</div>
             <div class="item-cost" id="cost-tesla">800 CR</div>
-            <div class="item-desc">Chain lightning x3</div>
+            <div class="item-desc">Chain lightning x3 | HP:90</div>
           </div>
           <div class="hotkey">[4]</div>
         </div>
@@ -468,7 +494,7 @@ html, body { width:100%; height:100%; overflow:hidden; background:var(--bg-dark)
           <div class="item-info">
             <div class="item-name">CRYO BEAM</div>
             <div class="item-cost" id="cost-cryo">1500 CR</div>
-            <div class="item-desc">Freeze ray, constant</div>
+            <div class="item-desc">Freeze ray, constant | HP:120</div>
           </div>
           <div class="hotkey">[5]</div>
         </div>
@@ -477,7 +503,7 @@ html, body { width:100%; height:100%; overflow:hidden; background:var(--bg-dark)
           <div class="item-info">
             <div class="item-name">MISSILE BAY</div>
             <div class="item-cost" id="cost-missile">2500 CR</div>
-            <div class="item-desc">Homing rockets, AOE</div>
+            <div class="item-desc">Homing rockets, AOE | HP:200</div>
           </div>
           <div class="hotkey">[6]</div>
         </div>
@@ -486,7 +512,7 @@ html, body { width:100%; height:100%; overflow:hidden; background:var(--bg-dark)
           <div class="item-info">
             <div class="item-name">NANO SWARM</div>
             <div class="item-cost" id="cost-nano">1800 CR</div>
-            <div class="item-desc">Poison cloud DOT</div>
+            <div class="item-desc">Poison cloud DOT | HP:110</div>
           </div>
           <div class="hotkey">[7]</div>
         </div>
@@ -516,3 +542,1474 @@ html, body { width:100%; height:100%; overflow:hidden; background:var(--bg-dark)
   </div>
   <div id="upgrade-screen"></div>
 </div>
+<script>
+// ============================================================
+// SECTION 1: DATA DEFINITIONS
+// ============================================================
+const TURRET_DATA = {
+  laser:   { name:'Laser Sentry',  cost:500,  damage:15,  fireRate:0.15, range:180, color:'#00f0ff', projColor:'#00f0ff', projSpeed:600, aoe:0, slow:0, chain:0, dot:0, beam:false, hp:80 },
+  plasma:  { name:'Plasma Turret', cost:1200, damage:40,  fireRate:0.6,  range:140, color:'#ff6a00', projColor:'#ff6a00', projSpeed:400, aoe:50,slow:0, chain:0, dot:0, beam:false, hp:150 },
+  emp:     { name:'EMP Drone',     cost:2000, damage:5,   fireRate:0.8,  range:160, color:'#b44aff', projColor:'#b44aff', projSpeed:0,   aoe:0, slow:0.5, chain:0, dot:0, beam:false, hp:100 },
+  tesla:   { name:'Tesla Coil',    cost:800,  damage:25,  fireRate:0.5,  range:150, color:'#4af0ff', projColor:'#4af0ff', projSpeed:800, aoe:0, slow:0, chain:3, dot:0, beam:false, hp:90 },
+  cryo:    { name:'Cryo Beam',     cost:1500, damage:20,  fireRate:0.05, range:160, color:'#80ffff', projColor:'#80ffff', projSpeed:0,   aoe:0, slow:0.6, chain:0, dot:0, beam:true, hp:120 },
+  missile: { name:'Missile Bay',   cost:2500, damage:80,  fireRate:1.2,  range:220, color:'#ff3344', projColor:'#ff3344', projSpeed:300, aoe:60,slow:0, chain:0, dot:0, beam:false, hp:200 },
+  nano:    { name:'Nano Swarm',    cost:1800, damage:10,  fireRate:0.8,  range:130, color:'#39ff14', projColor:'#39ff14', projSpeed:0,   aoe:80,slow:0, chain:0, dot:15, beam:false, hp:110 }
+};
+
+const ENEMY_DATA = {
+  scout:    { name:'Scout',    hp:50,   speed:120, bounty:30,  color:'#aaffaa', radius:6,  steal:100,  attackDmg:5,  attackRate:0.8 },
+  soldier:  { name:'Soldier',  hp:120,  speed:70,  bounty:60,  color:'#ffcc44', radius:8,  steal:200,  attackDmg:12, attackRate:1.0 },
+  tank:     { name:'Tank',     hp:350,  speed:40,  bounty:120, color:'#ff6644', radius:12, steal:400,  attackDmg:25, attackRate:1.2 },
+  speeder:  { name:'Speeder',  hp:30,   speed:180, bounty:25,  color:'#44ffff', radius:5,  steal:80,   attackDmg:3,  attackRate:0.5 },
+  shielded: { name:'Shielded', hp:150,  speed:65,  bounty:90,  color:'#8888ff', radius:9,  steal:250,  attackDmg:15, attackRate:1.0, shield:100 },
+  healer:   { name:'Healer',   hp:100,  speed:60,  bounty:80,  color:'#ff88ff', radius:7,  steal:150,  attackDmg:8,  attackRate:0.8, healRate:10, healRange:80 },
+  boss:     { name:'Boss',     hp:1000, speed:30,  bounty:500, color:'#ff2222', radius:18, steal:1000, attackDmg:50, attackRate:1.5 }
+};
+
+const COMMANDER_GROUPS = [
+  { id:'technicians', name:'TECHNICIANS', color:'#00f0ff' },
+  { id:'economists',  name:'ECONOMISTS',  color:'#39ff14' },
+  { id:'generals',    name:'GENERALS',    color:'#ff6a00' },
+  { id:'scientists',  name:'SCIENTISTS',  color:'#b44aff' }
+];
+
+const COMMANDERS = [
+  { id:'vex', name:'VEX', role:'FIELD TECHNICIAN', group:'technicians', desc:'Chief Engineer - Overclocks turrets and calls orbital strikes.',
+    skill1:{ name:'Overclock', key:'Q', desc:'All turrets fire 50% faster for 12s', cd:45 },
+    skill2:{ name:'Orbital Strike', key:'W', desc:'300 damage in large radius (click to target)', cd:90, targeting:true }},
+  { id:'raze', name:'RAZE', role:'TURRET OPTIMIZER', group:'technicians', desc:'Systems Specialist - Repairs and enhances turrets with ion support.',
+    skill1:{ name:'Nano Repair', key:'Q', desc:'Random turret deals 2x damage for 15s', cd:40 },
+    skill2:{ name:'Ion Cannon', key:'W', desc:'Ion beam sweeps field for 200 damage', cd:80 }},
+  { id:'forge', name:'FORGE', role:'DEFENSE ARCHITECT', group:'technicians', desc:'Master Mechanic - Fortifies defenses and calls satellite barrages.',
+    skill1:{ name:'Fortify', key:'Q', desc:'All turrets gain shield for 20s', cd:50 },
+    skill2:{ name:'Satellite Barrage', key:'W', desc:'5 orbital strikes on random enemies, 100 dmg each', cd:70 }},
+  { id:'lyra', name:'LYRA', role:'RESOURCE STRATEGIST', group:'economists', desc:'Market Analyst - Doubles bounties and salvages extra credits.',
+    skill1:{ name:'Market Surge', key:'Q', desc:'Kill bounties doubled for 15s', cd:50 },
+    skill2:{ name:'Salvage Protocol', key:'W', desc:'Enemies drop 50 extra CR for 20s', cd:60 }},
+  { id:'quinn', name:'QUINN', role:'SUPPLY CHAIN EXPERT', group:'economists', desc:'Trade Broker - Earns interest and reduces turret costs.',
+    skill1:{ name:'Compound Interest', key:'Q', desc:'3% interest on credits at wave end', cd:60 },
+    skill2:{ name:'Black Market', key:'W', desc:'Turret costs -30% for 20s', cd:55 }},
+  { id:'mint', name:'MINT', role:'FISCAL COMMANDER', group:'economists', desc:'Treasury Agent - Marks bounties and generates passive income.',
+    skill1:{ name:'Bounty Hunter', key:'Q', desc:'5 enemies marked for 3x bounty', cd:45 },
+    skill2:{ name:'Economic Boom', key:'W', desc:'Each turret generates 10 CR/s for 15s', cd:70 }},
+  { id:'kaine', name:'KAINE', role:'STRIKE COMMANDER', group:'generals', desc:'War Commander - Carpet bombs and artillery barrages.',
+    skill1:{ name:'Airstrike', key:'Q', desc:'250 damage line across map (click to target)', cd:60, targeting:true },
+    skill2:{ name:'Artillery Barrage', key:'W', desc:'8 shells on random enemies, 150 dmg each', cd:75 }},
+  { id:'havoc', name:'HAVOC', role:'ASSAULT SPECIALIST', group:'generals', desc:'Assault Director - Napalm runs and gunship support.',
+    skill1:{ name:'Napalm Run', key:'Q', desc:'Fire zone: 50 DPS for 10s (click to target)', cd:55, targeting:true },
+    skill2:{ name:'Gunship Support', key:'W', desc:'Gunship fires at enemies for 12s, 80 DPS', cd:80 }},
+  { id:'steel', name:'STEEL', role:'HEAVY ORDNANCE', group:'generals', desc:'Artillery Marshal - Massive single-target and cluster munitions.',
+    skill1:{ name:'Howitzer Strike', key:'Q', desc:'500 damage single target (click to target)', cd:50, targeting:true },
+    skill2:{ name:'Cluster Bombs', key:'W', desc:'10 mini-explosions of 80 damage over wide area', cd:65 }},
+  { id:'nova', name:'NOVA', role:'EXPERIMENTAL WEAPONS', group:'scientists', desc:'Quantum Physicist - Singularities and experimental nukes.',
+    skill1:{ name:'Singularity', key:'Q', desc:'Black hole pulls enemies, 100 DPS for 6s (click)', cd:70, targeting:true },
+    skill2:{ name:'Experimental Nuke', key:'W', desc:'500 dmg + radiation zone (click to target)', cd:120, targeting:true }},
+  { id:'flux', name:'FLUX', role:'PROTOTYPE SPECIALIST', group:'scientists', desc:'Weapons Engineer - Deploys experimental turrets and antimatter bombs.',
+    skill1:{ name:'Deploy Exp. Turret', key:'Q', desc:'Temp super-turret for 20s, 60 DPS (click)', cd:60, targeting:true },
+    skill2:{ name:'Antimatter Bomb', key:'W', desc:'400 damage medium radius (click to target)', cd:100, targeting:true }},
+  { id:'echo', name:'ECHO', role:'REALITY ENGINEER', group:'scientists', desc:'Dimensional Researcher - Phase shields and particle cannons.',
+    skill1:{ name:'Phase Shield', key:'Q', desc:'Force field blocks enemies for 8s', cd:80 },
+    skill2:{ name:'Exp. Particle Cannon', key:'W', desc:'Beam pierces all enemies in line for 200 dmg (click)', cd:55, targeting:true }}
+];
+
+const UPGRADE_TREE = {
+  turrets: {
+    name:'TURRETS', columns:[
+      { name:'Damage', sub:'Offensive Power', nodes:[
+        { id:'t_dmg1', name:'Sharp Rounds', desc:'+15% turret damage', cost:50, effect:{dmgMult:0.15} },
+        { id:'t_dmg2', name:'Piercing Rounds', desc:'+25% turret damage', cost:120, effect:{dmgMult:0.25} },
+        { id:'t_dmg3', name:'Plasma Core', desc:'+40% turret damage', cost:250, effect:{dmgMult:0.40} }
+      ]},
+      { name:'Fire Rate', sub:'Attack Speed', nodes:[
+        { id:'t_spd1', name:'Quick Loader', desc:'+15% fire rate', cost:50, effect:{rateMult:0.15} },
+        { id:'t_spd2', name:'Auto Feeder', desc:'+25% fire rate', cost:120, effect:{rateMult:0.25} },
+        { id:'t_spd3', name:'Overclocker', desc:'+40% fire rate', cost:250, effect:{rateMult:0.40} }
+      ]},
+      { name:'Range', sub:'Detection Range', nodes:[
+        { id:'t_rng1', name:'Long Sensors', desc:'+15% range', cost:40, effect:{rangeMult:0.15} },
+        { id:'t_rng2', name:'Radar Boost', desc:'+25% range', cost:100, effect:{rangeMult:0.25} }
+      ]}
+    ]
+  },
+  economy: {
+    name:'ECONOMY', columns:[
+      { name:'Income', sub:'Credit Generation', nodes:[
+        { id:'e_inc1', name:'Salvage Tech', desc:'+20% kill bounties', cost:60, effect:{bountyMult:0.20} },
+        { id:'e_inc2', name:'Loot Scanner', desc:'+35% kill bounties', cost:150, effect:{bountyMult:0.35} }
+      ]},
+      { name:'Savings', sub:'Cost Reduction', nodes:[
+        { id:'e_sav1', name:'Bulk Pricing', desc:'-10% turret costs', cost:80, effect:{costMult:-0.10} },
+        { id:'e_sav2', name:'Supply Lines', desc:'-20% turret costs', cost:180, effect:{costMult:-0.20} }
+      ]}
+    ]
+  },
+  commander: {
+    name:'COMMANDER', columns:[
+      { name:'Cooldowns', sub:'Skill Recovery', nodes:[
+        { id:'c_cd1', name:'Quick Refresh', desc:'-15% cooldowns', cost:70, effect:{cdMult:-0.15} },
+        { id:'c_cd2', name:'Rapid Cycle', desc:'-25% cooldowns', cost:160, effect:{cdMult:-0.25} }
+      ]},
+      { name:'Power', sub:'Skill Strength', nodes:[
+        { id:'c_pw1', name:'Amplifier', desc:'+20% skill effects', cost:80, effect:{skillMult:0.20} },
+        { id:'c_pw2', name:'Overcharge', desc:'+35% skill effects', cost:200, effect:{skillMult:0.35} }
+      ]}
+    ]
+  },
+  defense: {
+    name:'DEFENSE', columns:[
+      { name:'Vault HP', sub:'Starting Credits', nodes:[
+        { id:'d_hp1', name:'Reinforced Vault', desc:'+2000 starting CR', cost:100, effect:{startCR:2000} },
+        { id:'d_hp2', name:'Mega Vault', desc:'+5000 starting CR', cost:250, effect:{startCR:5000} }
+      ]},
+      { name:'Resistance', sub:'Damage Reduction', nodes:[
+        { id:'d_res1', name:'Plating', desc:'Enemies steal 15% less', cost:90, effect:{stealReduce:0.15} },
+        { id:'d_res2', name:'Fortress', desc:'Enemies steal 30% less', cost:200, effect:{stealReduce:0.30} }
+      ]}
+    ]
+  }
+};
+
+const WAVE_COMPOSITIONS = [
+  [{type:'scout',count:5}],
+  [{type:'scout',count:8}],
+  [{type:'scout',count:6},{type:'soldier',count:2}],
+  [{type:'scout',count:5},{type:'soldier',count:4},{type:'speeder',count:3}],
+  [{type:'soldier',count:6},{type:'tank',count:1},{type:'boss',count:1}],
+  [{type:'soldier',count:8},{type:'speeder',count:5}],
+  [{type:'soldier',count:5},{type:'shielded',count:3},{type:'healer',count:1}],
+  [{type:'tank',count:3},{type:'soldier',count:6},{type:'speeder',count:4}],
+  [{type:'shielded',count:5},{type:'healer',count:2},{type:'soldier',count:4}],
+  [{type:'tank',count:4},{type:'shielded',count:4},{type:'healer',count:2},{type:'boss',count:1}],
+  [{type:'scout',count:15},{type:'speeder',count:10}],
+  [{type:'tank',count:5},{type:'shielded',count:5},{type:'healer',count:3}],
+  [{type:'soldier',count:10},{type:'tank',count:4},{type:'speeder',count:8}],
+  [{type:'shielded',count:8},{type:'healer',count:4},{type:'tank',count:3}],
+  [{type:'tank',count:6},{type:'shielded',count:6},{type:'healer',count:3},{type:'boss',count:2}]
+];
+
+// ============================================================
+// SECTION 2: GAME STATE & ENGINE
+// ============================================================
+// Persistent data
+let persistent = JSON.parse(localStorage.getItem('rosemary_save') || '{"ecredits":0,"upgrades":[]}');
+function savePersistent(){ localStorage.setItem('rosemary_save', JSON.stringify(persistent)); }
+
+// Game state
+let game = null;
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+function getUpgradeEffects(){
+  let fx = { dmgMult:0, rateMult:0, rangeMult:0, bountyMult:0, costMult:0, cdMult:0, skillMult:0, startCR:0, stealReduce:0 };
+  for(let uid of persistent.upgrades){
+    for(let cat in UPGRADE_TREE){
+      for(let col of UPGRADE_TREE[cat].columns){
+        for(let n of col.nodes){
+          if(n.id===uid){
+            for(let k in n.effect) fx[k] = (fx[k]||0) + n.effect[k];
+          }
+        }
+      }
+    }
+  }
+  return fx;
+}
+
+function getTurretCost(type){
+  let base = TURRET_DATA[type].cost;
+  let fx = getUpgradeEffects();
+  let mult = 1 + fx.costMult;
+  if(game && game.blackMarketTimer > 0) mult -= 0.3;
+  return Math.max(50, Math.round(base * mult));
+}
+
+function createGame(commanderId){
+  let fx = getUpgradeEffects();
+  let cmd = COMMANDERS.find(c=>c.id===commanderId);
+  let cdMult = 1 + fx.cdMult;
+  return {
+    commander: cmd,
+    credits: 10000 + fx.startCR,
+    score: 0,
+    wave: 0,
+    waveActive: false,
+    buildPhase: true,
+    enemies: [],
+    turrets: [],
+    projectiles: [],
+    particles: [],
+    effects: [], // persistent area effects (napalm, radiation, etc)
+    tempTurrets: [], // experimental turrets
+    selectedTurret: null,
+    skillTargeting: null, // which skill is being targeted
+    skill1CD: 0,
+    skill2CD: 0,
+    skill1MaxCD: Math.max(5, cmd.skill1.cd * cdMult),
+    skill2MaxCD: Math.max(5, cmd.skill2.cd * cdMult),
+    overclockTimer: 0,
+    marketSurgeTimer: 0,
+    salvageTimer: 0,
+    blackMarketTimer: 0,
+    bountyMarked: [], // enemy refs marked for bounty
+    economicBoomTimer: 0,
+    compoundInterest: false,
+    gunshipTimer: 0,
+    gunshipAngle: 0,
+    phaseShieldTimer: 0,
+    fortifyTimer: 0,
+    nanoRepairTarget: null,
+    nanoRepairTimer: 0,
+    spawnQueue: [],
+    spawnTimer: 0,
+    enemiesRemaining: 0,
+    lastTime: 0,
+    running: true,
+    vaultX: 0, vaultY: 0,
+    gridSize: 40,
+    mapW: 0, mapH: 0
+  };
+}
+
+function resizeCanvas(){
+  const rect = canvas.parentElement.getBoundingClientRect();
+  const hud = document.getElementById('hud');
+  const shop = document.getElementById('shop-panel');
+  canvas.width = rect.width;
+  canvas.height = rect.height - hud.offsetHeight - shop.offsetHeight;
+  canvas.style.height = canvas.height + 'px';
+  if(game){
+    game.mapW = canvas.width;
+    game.mapH = canvas.height;
+    game.vaultX = canvas.width / 2;
+    game.vaultY = canvas.height / 2;
+  }
+}
+
+function dist(x1,y1,x2,y2){ return Math.sqrt((x2-x1)**2+(y2-y1)**2); }
+
+function spawnWave(waveNum){
+  let idx = Math.min(waveNum - 1, WAVE_COMPOSITIONS.length - 1);
+  let comp = WAVE_COMPOSITIONS[idx];
+  let scaleFactor = waveNum > WAVE_COMPOSITIONS.length ? 1 + (waveNum - WAVE_COMPOSITIONS.length) * 0.15 : 1;
+  let queue = [];
+  for(let group of comp){
+    let count = Math.ceil(group.count * (waveNum > WAVE_COMPOSITIONS.length ? 1 + (waveNum - WAVE_COMPOSITIONS.length)*0.1 : 1));
+    for(let i=0; i<count; i++){
+      let base = ENEMY_DATA[group.type];
+      let e = {
+        type: group.type,
+        x:0, y:0,
+        hp: Math.round(base.hp * scaleFactor),
+        maxHp: Math.round(base.hp * scaleFactor),
+        speed: base.speed,
+        baseSpeed: base.speed,
+        bounty: Math.round(base.bounty * scaleFactor),
+        color: base.color,
+        radius: base.radius,
+        steal: base.steal,
+        shield: base.shield ? Math.round(base.shield * scaleFactor) : 0,
+        maxShield: base.shield ? Math.round(base.shield * scaleFactor) : 0,
+        healRate: base.healRate || 0,
+        healRange: base.healRange || 0,
+        slowTimer: 0,
+        dotTimer: 0,
+        dotDps: 0,
+        marked: false,
+        alive: true,
+        attackDmg: base.attackDmg || 5,
+        attackRate: base.attackRate || 1.0,
+        attackCooldown: 0
+      };
+      // spawn from random edge
+      let side = Math.random()*4|0;
+      if(side===0){ e.x=Math.random()*game.mapW; e.y=-20; }
+      else if(side===1){ e.x=game.mapW+20; e.y=Math.random()*game.mapH; }
+      else if(side===2){ e.x=Math.random()*game.mapW; e.y=game.mapH+20; }
+      else { e.x=-20; e.y=Math.random()*game.mapH; }
+      queue.push(e);
+    }
+  }
+  // shuffle
+  for(let i=queue.length-1;i>0;i--){ let j=Math.random()*(i+1)|0; [queue[i],queue[j]]=[queue[j],queue[i]]; }
+  game.spawnQueue = queue;
+  game.spawnTimer = 0;
+  game.enemiesRemaining = queue.length;
+}
+
+function updateEnemies(dt){
+  let fx = getUpgradeEffects();
+  let stealMult = 1 - fx.stealReduce;
+  for(let e of game.enemies){
+    if(!e.alive) continue;
+    // slow effect
+    let spdMult = 1;
+    if(e.slowTimer > 0){ spdMult = 0.4; e.slowTimer -= dt; }
+    // DOT
+    if(e.dotTimer > 0){ e.dotTimer -= dt; damageEnemy(e, e.dotDps * dt); }
+    // move toward vault
+    let dx = game.vaultX - e.x;
+    let dy = game.vaultY - e.y;
+    let d = Math.sqrt(dx*dx+dy*dy);
+    if(d < 20){
+      // reached vault - steal credits
+      let stolen = Math.round(e.steal * stealMult);
+      game.credits -= stolen;
+      e.alive = false;
+      game.enemiesRemaining--;
+      addParticles(e.x, e.y, '#ff2d7b', 8);
+      if(game.credits <= 0){ game.credits = 0; gameOver(); return; }
+      continue;
+    }
+    // phase shield blocks
+    if(game.phaseShieldTimer > 0 && d < 80){
+      // push back
+      e.x -= (dx/d) * e.speed * spdMult * dt * 2;
+      e.y -= (dy/d) * e.speed * spdMult * dt * 2;
+      continue;
+    }
+    let moveSpeed = e.speed * spdMult;
+    e.x += (dx/d) * moveSpeed * dt;
+    e.y += (dy/d) * moveSpeed * dt;
+    // healer: heal nearby
+    if(e.healRate > 0){
+      for(let o of game.enemies){
+        if(o===e || !o.alive) continue;
+        if(dist(e.x,e.y,o.x,o.y) < e.healRange){
+          o.hp = Math.min(o.maxHp, o.hp + e.healRate * dt);
+        }
+      }
+    }
+    // Enemy attacks nearby turrets
+    if(!e.attackCooldown) e.attackCooldown = 0;
+    e.attackCooldown -= dt;
+    if(e.attackCooldown <= 0){
+      let attackRange = (e.radius || 6) + 18; // enemy radius + turret radius + small buffer
+      let allT = [...game.turrets, ...game.tempTurrets];
+      for(let t of allT){
+        if(dist(e.x, e.y, t.x, t.y) < attackRange){
+          let dmg = e.attackDmg || 5;
+          t.hp -= dmg;
+          t.hitFlash = 0.15; // visual flash timer
+          if(t.hp <= 0){
+            t.destroyed = true;
+            addParticles(t.x, t.y, '#ff2d7b', 12);
+          }
+          e.attackCooldown = e.attackRate || 1.0;
+          break; // one turret per attack
+        }
+      }
+    }
+  }
+  // Remove destroyed turrets
+  game.turrets = game.turrets.filter(t => !t.destroyed);
+  game.tempTurrets = game.tempTurrets.filter(t => !t.destroyed);
+  // apply area effects
+  for(let ef of game.effects){
+    if(ef.timer <= 0) continue;
+    ef.timer -= dt;
+    for(let e of game.enemies){
+      if(!e.alive) continue;
+      if(dist(e.x,e.y,ef.x,ef.y) < ef.radius){
+        damageEnemy(e, ef.dps * dt);
+      }
+    }
+  }
+  game.effects = game.effects.filter(ef=>ef.timer>0);
+  game.enemies = game.enemies.filter(e=>e.alive);
+}
+
+function damageEnemy(e, dmg){
+  if(!e.alive) return;
+  if(e.shield > 0){
+    let absorbed = Math.min(e.shield, dmg);
+    e.shield -= absorbed;
+    dmg -= absorbed;
+  }
+  e.hp -= dmg;
+  if(e.hp <= 0){
+    e.alive = false;
+    game.enemiesRemaining--;
+    let bounty = e.bounty;
+    let fx = getUpgradeEffects();
+    bounty = Math.round(bounty * (1 + fx.bountyMult));
+    if(game.marketSurgeTimer > 0) bounty *= 2;
+    if(e.marked) bounty *= 3;
+    if(game.salvageTimer > 0) bounty += 50;
+    game.credits += bounty;
+    game.score += bounty;
+    addParticles(e.x, e.y, e.color, 6);
+  }
+}
+
+function updateTurrets(dt){
+  let fx = getUpgradeEffects();
+  let dmgMult = 1 + fx.dmgMult;
+  let rateMult = 1 + fx.rateMult;
+  let rangeMult = 1 + fx.rangeMult;
+  if(game.overclockTimer > 0) rateMult *= 1.5;
+  let allTurrets = [...game.turrets, ...game.tempTurrets];
+  for(let t of allTurrets){
+    if(t.nanoRepair) dmgMult *= 2;
+    t.cooldown -= dt;
+    if(t.cooldown > 0) continue;
+    let tData = TURRET_DATA[t.type] || t.customData;
+    if(!tData) continue;
+    let range = (tData.range || 150) * rangeMult;
+    // find target
+    let target = null;
+    let minDist = Infinity;
+    for(let e of game.enemies){
+      if(!e.alive) continue;
+      let d = dist(t.x, t.y, e.x, e.y);
+      if(d < range && d < minDist){ minDist = d; target = e; }
+    }
+    if(!target) continue;
+    t.cooldown = (tData.fireRate || 0.5) / rateMult;
+    t.angle = Math.atan2(target.y - t.y, target.x - t.x);
+    let damage = (tData.damage || 10) * dmgMult;
+    if(tData.beam){
+      // beam weapons hit instantly
+      damageEnemy(target, damage);
+      if(tData.slow > 0) target.slowTimer = Math.max(target.slowTimer, 0.5);
+      t.beamTarget = {x:target.x, y:target.y, timer:0.1};
+    } else if(tData.chain > 0){
+      // chain lightning
+      let targets = [target];
+      let last = target;
+      for(let c=1; c<tData.chain; c++){
+        let best = null, bd = Infinity;
+        for(let e of game.enemies){
+          if(!e.alive || targets.includes(e)) continue;
+          let d = dist(last.x, last.y, e.x, e.y);
+          if(d < range*0.7 && d < bd){ bd=d; best=e; }
+        }
+        if(best){ targets.push(best); last=best; }
+      }
+      for(let tgt of targets){
+        damageEnemy(tgt, damage);
+        addParticles(tgt.x, tgt.y, tData.projColor, 3);
+      }
+      t.chainTargets = targets.map(tgt=>({x:tgt.x,y:tgt.y}));
+      t.chainTimer = 0.15;
+    } else if(tData.projSpeed === 0 && !tData.beam){
+      // instant AoE (EMP, nano)
+      if(tData.aoe > 0){
+        for(let e of game.enemies){
+          if(!e.alive) continue;
+          if(dist(target.x,target.y,e.x,e.y) < tData.aoe){
+            damageEnemy(e, damage);
+            if(tData.slow > 0) e.slowTimer = Math.max(e.slowTimer, 1);
+            if(tData.dot > 0){ e.dotDps = tData.dot * dmgMult; e.dotTimer = Math.max(e.dotTimer, 3); }
+          }
+        }
+        addParticles(target.x, target.y, tData.projColor, 5);
+      } else {
+        // single target slow (EMP)
+        damageEnemy(target, damage);
+        if(tData.slow > 0) target.slowTimer = Math.max(target.slowTimer, 1.5);
+        addParticles(target.x, target.y, tData.projColor, 3);
+      }
+    } else {
+      // projectile
+      let angle = Math.atan2(target.y - t.y, target.x - t.x);
+      game.projectiles.push({
+        x: t.x, y: t.y,
+        vx: Math.cos(angle) * tData.projSpeed,
+        vy: Math.sin(angle) * tData.projSpeed,
+        damage: damage,
+        color: tData.projColor,
+        aoe: tData.aoe || 0,
+        slow: tData.slow || 0,
+        dot: tData.dot ? tData.dot * dmgMult : 0,
+        homing: t.type === 'missile' ? target : null,
+        life: 3
+      });
+    }
+  }
+  // temp turret timers
+  game.tempTurrets = game.tempTurrets.filter(t=>{ t.lifeTimer -= dt; return t.lifeTimer > 0; });
+}
+
+function updateProjectiles(dt){
+  for(let p of game.projectiles){
+    if(p.homing && p.homing.alive){
+      let dx = p.homing.x - p.x;
+      let dy = p.homing.y - p.y;
+      let d = Math.sqrt(dx*dx+dy*dy);
+      let speed = Math.sqrt(p.vx*p.vx+p.vy*p.vy);
+      p.vx = (dx/d)*speed; p.vy = (dy/d)*speed;
+    }
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    p.life -= dt;
+    // check collision
+    for(let e of game.enemies){
+      if(!e.alive) continue;
+      if(dist(p.x,p.y,e.x,e.y) < e.radius + 5){
+        if(p.aoe > 0){
+          for(let e2 of game.enemies){
+            if(!e2.alive) continue;
+            if(dist(p.x,p.y,e2.x,e2.y) < p.aoe){
+              damageEnemy(e2, p.damage);
+              if(p.slow > 0) e2.slowTimer = Math.max(e2.slowTimer, 1);
+              if(p.dot > 0){ e2.dotDps = p.dot; e2.dotTimer = Math.max(e2.dotTimer, 3); }
+            }
+          }
+        } else {
+          damageEnemy(e, p.damage);
+          if(p.slow > 0) e.slowTimer = Math.max(e.slowTimer, 1);
+          if(p.dot > 0){ e.dotDps = p.dot; e.dotTimer = Math.max(e.dotTimer, 3); }
+        }
+        addParticles(p.x, p.y, p.color, 4);
+        p.life = 0;
+        break;
+      }
+    }
+  }
+  game.projectiles = game.projectiles.filter(p=>p.life>0 && p.x>-50 && p.x<game.mapW+50 && p.y>-50 && p.y<game.mapH+50);
+}
+
+function addParticles(x, y, color, count){
+  for(let i=0; i<count; i++){
+    let angle = Math.random()*Math.PI*2;
+    let speed = 30 + Math.random()*80;
+    game.particles.push({
+      x, y, vx:Math.cos(angle)*speed, vy:Math.sin(angle)*speed,
+      life:0.3+Math.random()*0.4, maxLife:0.3+Math.random()*0.4,
+      color, radius: 1+Math.random()*2
+    });
+  }
+}
+
+function updateParticles(dt){
+  for(let p of game.particles){
+    p.x += p.vx*dt; p.y += p.vy*dt;
+    p.life -= dt;
+  }
+  game.particles = game.particles.filter(p=>p.life>0);
+}
+
+function updateTimers(dt){
+  if(game.overclockTimer > 0) game.overclockTimer -= dt;
+  if(game.marketSurgeTimer > 0) game.marketSurgeTimer -= dt;
+  if(game.salvageTimer > 0) game.salvageTimer -= dt;
+  if(game.blackMarketTimer > 0) game.blackMarketTimer -= dt;
+  if(game.economicBoomTimer > 0){
+    game.economicBoomTimer -= dt;
+    let crPerSec = 10 * game.turrets.length;
+    game.credits += Math.round(crPerSec * dt);
+  }
+  if(game.phaseShieldTimer > 0) game.phaseShieldTimer -= dt;
+  if(game.fortifyTimer > 0) game.fortifyTimer -= dt;
+  if(game.nanoRepairTimer > 0){
+    game.nanoRepairTimer -= dt;
+    if(game.nanoRepairTimer <= 0 && game.nanoRepairTarget){
+      game.nanoRepairTarget.nanoRepair = false;
+      game.nanoRepairTarget = null;
+    }
+  }
+  if(game.gunshipTimer > 0){
+    game.gunshipTimer -= dt;
+    game.gunshipAngle += dt * 1.2;
+    // gunship fires at nearest enemy
+    let gx = game.vaultX + Math.cos(game.gunshipAngle)*200;
+    let gy = game.vaultY + Math.sin(game.gunshipAngle)*150;
+    let best = null, bd = Infinity;
+    for(let e of game.enemies){
+      if(!e.alive) continue;
+      let d = dist(gx,gy,e.x,e.y);
+      if(d < bd){ bd=d; best=e; }
+    }
+    if(best) damageEnemy(best, 80*dt);
+  }
+  if(game.skill1CD > 0) game.skill1CD -= dt;
+  if(game.skill2CD > 0) game.skill2CD -= dt;
+}
+
+function spawnEnemies(dt){
+  if(game.spawnQueue.length === 0) return;
+  game.spawnTimer -= dt;
+  if(game.spawnTimer <= 0){
+    game.spawnTimer = 0.4;
+    let e = game.spawnQueue.shift();
+    if(e) game.enemies.push(e);
+  }
+}
+
+function checkWaveEnd(){
+  if(game.waveActive && game.enemiesRemaining <= 0 && game.spawnQueue.length === 0){
+    game.waveActive = false;
+    game.buildPhase = true;
+    // compound interest
+    if(game.compoundInterest){
+      game.credits += Math.round(game.credits * 0.03);
+      game.compoundInterest = false;
+    }
+    // award e-credits
+    let ecr = 10 + game.wave * 5;
+    persistent.ecredits += ecr;
+    savePersistent();
+    updateHUD();
+  }
+}
+
+function gameLoop(timestamp){
+  if(!game || !game.running){ return; }
+  let dt = Math.min((timestamp - game.lastTime)/1000, 0.05);
+  game.lastTime = timestamp;
+  if(game.waveActive){
+    spawnEnemies(dt);
+    updateEnemies(dt);
+    updateTurrets(dt);
+    updateProjectiles(dt);
+    checkWaveEnd();
+  }
+  updateTimers(dt);
+  updateParticles(dt);
+  render();
+  updateHUD();
+  requestAnimationFrame(gameLoop);
+}
+
+function gameOver(){
+  game.running = false;
+  document.getElementById('overlay').style.display = 'flex';
+  document.getElementById('overlay-title').textContent = 'VAULT BREACHED';
+  document.getElementById('overlay-title').style.color = '#ff2d7b';
+  document.getElementById('overlay-msg').textContent = 'Final Score: ' + game.score + ' | Waves Survived: ' + game.wave;
+}
+
+// ============================================================
+// SECTION 3: RENDERING
+// ============================================================
+function render(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  // Background
+  ctx.fillStyle = '#080e18';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  // Grid
+  ctx.strokeStyle = 'rgba(0,240,255,0.06)';
+  ctx.lineWidth = 0.5;
+  let gs = game.gridSize;
+  for(let x=0; x<canvas.width; x+=gs){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvas.height); ctx.stroke(); }
+  for(let y=0; y<canvas.height; y+=gs){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(canvas.width,y); ctx.stroke(); }
+
+  // Area effects (napalm, radiation)
+  for(let ef of game.effects){
+    let alpha = Math.min(0.3, ef.timer * 0.1);
+    ctx.beginPath();
+    ctx.arc(ef.x, ef.y, ef.radius, 0, Math.PI*2);
+    ctx.fillStyle = ef.color.replace(')', ','+alpha+')').replace('rgb','rgba');
+    if(ef.color.startsWith('#')){
+      ctx.fillStyle = ef.color + Math.round(alpha*255).toString(16).padStart(2,'0');
+    }
+    ctx.globalAlpha = alpha;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  // Phase shield
+  if(game.phaseShieldTimer > 0){
+    ctx.beginPath();
+    ctx.arc(game.vaultX, game.vaultY, 80, 0, Math.PI*2);
+    ctx.strokeStyle = 'rgba(180,74,255,0.6)';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(180,74,255,0.08)';
+    ctx.fill();
+    ctx.lineWidth = 1;
+  }
+
+  // Vault
+  let vPulse = 0.7 + 0.3 * Math.sin(Date.now()/500);
+  let vaultGrad = ctx.createRadialGradient(game.vaultX, game.vaultY, 5, game.vaultX, game.vaultY, 35);
+  vaultGrad.addColorStop(0, 'rgba(0,240,255,'+vPulse+')');
+  vaultGrad.addColorStop(0.5, 'rgba(0,240,255,0.15)');
+  vaultGrad.addColorStop(1, 'transparent');
+  ctx.beginPath();
+  ctx.arc(game.vaultX, game.vaultY, 35, 0, Math.PI*2);
+  ctx.fillStyle = vaultGrad;
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(game.vaultX, game.vaultY, 15, 0, Math.PI*2);
+  ctx.fillStyle = 'rgba(0,240,255,0.8)';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(0,240,255,0.4)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.arc(game.vaultX, game.vaultY, 25, 0, Math.PI*2);
+  ctx.stroke();
+
+  // Turrets
+  let allT = [...game.turrets, ...game.tempTurrets];
+  for(let t of allT){
+    let td = TURRET_DATA[t.type] || t.customData;
+    let color = td ? td.color : '#ffffff';
+    // base
+    ctx.beginPath();
+    ctx.arc(t.x, t.y, 12, 0, Math.PI*2);
+    ctx.fillStyle = 'rgba(8,16,32,0.9)';
+    ctx.fill();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    // barrel
+    let bLen = 16;
+    ctx.beginPath();
+    ctx.moveTo(t.x, t.y);
+    ctx.lineTo(t.x + Math.cos(t.angle||0)*bLen, t.y + Math.sin(t.angle||0)*bLen);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+    // range indicator when selected
+    if(game.selectedTurret === t.type){
+      // show range on hover - not needed here
+    }
+    // fortify shield
+    if(game.fortifyTimer > 0){
+      ctx.beginPath();
+      ctx.arc(t.x, t.y, 15, 0, Math.PI*2);
+      ctx.strokeStyle = 'rgba(0,240,255,0.3)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+    // nano repair glow
+    if(t.nanoRepair){
+      ctx.beginPath();
+      ctx.arc(t.x, t.y, 16, 0, Math.PI*2);
+      ctx.strokeStyle = 'rgba(57,255,20,0.5)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+    // damage flash
+    if(t.hitFlash && t.hitFlash > 0){
+      t.hitFlash -= 0.016;
+      ctx.beginPath();
+      ctx.arc(t.x, t.y, 14, 0, Math.PI*2);
+      ctx.fillStyle = 'rgba(255,45,123,' + Math.min(0.6, t.hitFlash * 4) + ')';
+      ctx.fill();
+    }
+    // turret HP bar
+    if(t.maxHp && t.hp < t.maxHp){
+      let bw = 20;
+      let bx = t.x - bw/2;
+      let by = t.y + 14;
+      ctx.fillStyle = 'rgba(0,0,0,0.6)';
+      ctx.fillRect(bx-1, by-1, bw+2, 5);
+      ctx.fillStyle = 'rgba(255,50,50,0.7)';
+      ctx.fillRect(bx, by, bw, 3);
+      let hpRatio = Math.max(0, t.hp / t.maxHp);
+      let hpColor = hpRatio > 0.5 ? 'rgba(0,255,100,0.8)' : hpRatio > 0.25 ? 'rgba(255,200,0,0.8)' : 'rgba(255,50,50,0.9)';
+      ctx.fillStyle = hpColor;
+      ctx.fillRect(bx, by, bw * hpRatio, 3);
+    }
+    // beam effect
+    if(t.beamTarget && t.beamTarget.timer > 0){
+      t.beamTarget.timer -= 0.016;
+      ctx.beginPath();
+      ctx.moveTo(t.x, t.y);
+      ctx.lineTo(t.beamTarget.x, t.beamTarget.y);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2;
+      ctx.globalAlpha = 0.7;
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+    // chain lightning
+    if(t.chainTimer && t.chainTimer > 0 && t.chainTargets){
+      t.chainTimer -= 0.016;
+      ctx.beginPath();
+      ctx.moveTo(t.x, t.y);
+      for(let ct of t.chainTargets) ctx.lineTo(ct.x, ct.y);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2;
+      ctx.globalAlpha = 0.8;
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  // Enemies
+  for(let e of game.enemies){
+    if(!e.alive) continue;
+    // shadow
+    ctx.beginPath();
+    ctx.arc(e.x, e.y, e.radius+2, 0, Math.PI*2);
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.fill();
+    // body
+    ctx.beginPath();
+    ctx.arc(e.x, e.y, e.radius, 0, Math.PI*2);
+    ctx.fillStyle = e.color;
+    ctx.fill();
+    // shield
+    if(e.shield > 0){
+      ctx.beginPath();
+      ctx.arc(e.x, e.y, e.radius+3, 0, Math.PI*2);
+      ctx.strokeStyle = 'rgba(100,100,255,0.7)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+    // marked
+    if(e.marked){
+      ctx.beginPath();
+      ctx.arc(e.x, e.y-e.radius-6, 3, 0, Math.PI*2);
+      ctx.fillStyle = '#ff2d7b';
+      ctx.fill();
+    }
+    // health bar
+    if(e.hp < e.maxHp){
+      let bw = e.radius*2;
+      let bx = e.x - bw/2;
+      let by = e.y - e.radius - 6;
+      ctx.fillStyle = 'rgba(255,0,0,0.5)';
+      ctx.fillRect(bx, by, bw, 3);
+      ctx.fillStyle = 'rgba(0,255,0,0.7)';
+      ctx.fillRect(bx, by, bw*(e.hp/e.maxHp), 3);
+    }
+    // slow indicator
+    if(e.slowTimer > 0){
+      ctx.beginPath();
+      ctx.arc(e.x, e.y, e.radius+1, 0, Math.PI*2);
+      ctx.strokeStyle = 'rgba(128,255,255,0.5)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+  }
+
+  // Projectiles
+  for(let p of game.projectiles){
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 3, 0, Math.PI*2);
+    ctx.fillStyle = p.color;
+    ctx.fill();
+    // trail
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+    ctx.lineTo(p.x - p.vx*0.02, p.y - p.vy*0.02);
+    ctx.strokeStyle = p.color;
+    ctx.lineWidth = 1.5;
+    ctx.globalAlpha = 0.5;
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+
+  // Particles
+  for(let p of game.particles){
+    let alpha = p.life / p.maxLife;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.radius * alpha, 0, Math.PI*2);
+    ctx.fillStyle = p.color;
+    ctx.globalAlpha = alpha;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  // Gunship
+  if(game.gunshipTimer > 0){
+    let gx = game.vaultX + Math.cos(game.gunshipAngle)*200;
+    let gy = game.vaultY + Math.sin(game.gunshipAngle)*150;
+    ctx.beginPath();
+    ctx.moveTo(gx-10, gy);
+    ctx.lineTo(gx+10, gy);
+    ctx.lineTo(gx, gy-6);
+    ctx.closePath();
+    ctx.fillStyle = '#ff6a00';
+    ctx.fill();
+    // fire line to nearest enemy
+    let best = null, bd = Infinity;
+    for(let e of game.enemies){
+      if(!e.alive) continue;
+      let d = dist(gx,gy,e.x,e.y);
+      if(d<bd){bd=d;best=e;}
+    }
+    if(best){
+      ctx.beginPath(); ctx.moveTo(gx,gy); ctx.lineTo(best.x,best.y);
+      ctx.strokeStyle='rgba(255,106,0,0.5)'; ctx.lineWidth=1; ctx.stroke();
+    }
+  }
+
+  // Placement preview
+  if(game.selectedTurret && game.selectedTurret !== 'sell' && game.mouseX != null){
+    let gx = Math.floor(game.mouseX / gs) * gs + gs/2;
+    let gy = Math.floor(game.mouseY / gs) * gs + gs/2;
+    let td = TURRET_DATA[game.selectedTurret];
+    let fx = getUpgradeEffects();
+    let range = td.range * (1+fx.rangeMult);
+    ctx.beginPath();
+    ctx.arc(gx, gy, range, 0, Math.PI*2);
+    ctx.strokeStyle = 'rgba(0,240,255,0.15)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(gx, gy, 12, 0, Math.PI*2);
+    ctx.fillStyle = 'rgba(0,240,255,0.15)';
+    ctx.fill();
+    ctx.strokeStyle = td.color;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+
+  // Skill targeting crosshair
+  if(game.skillTargeting && game.mouseX != null){
+    ctx.beginPath();
+    ctx.arc(game.mouseX, game.mouseY, 30, 0, Math.PI*2);
+    ctx.strokeStyle = 'rgba(255,45,123,0.6)';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([5,5]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.moveTo(game.mouseX-15,game.mouseY);
+    ctx.lineTo(game.mouseX+15,game.mouseY);
+    ctx.moveTo(game.mouseX,game.mouseY-15);
+    ctx.lineTo(game.mouseX,game.mouseY+15);
+    ctx.strokeStyle='rgba(255,45,123,0.4)';
+    ctx.lineWidth=1;
+    ctx.stroke();
+  }
+}
+
+// ============================================================
+// SECTION 4: UI LOGIC
+// ============================================================
+// ---- SCREEN NAVIGATION ----
+function showCommanderSelect(){
+  document.getElementById('title-screen').style.display = 'none';
+  document.getElementById('commander-screen').style.display = 'flex';
+  buildCommanderCards();
+}
+
+function buildCommanderCards(){
+  let tabsEl = document.getElementById('cmd-group-tabs');
+  tabsEl.innerHTML = '';
+  COMMANDER_GROUPS.forEach((g,i)=>{
+    let tab = document.createElement('div');
+    tab.className = 'cmd-group-tab' + (i===0?' active':'');
+    tab.dataset.group = g.id;
+    tab.textContent = g.name;
+    tab.onclick = ()=> switchCmdGroup(g.id);
+    tabsEl.appendChild(tab);
+  });
+  switchCmdGroup('technicians');
+}
+
+let selectedCmdId = null;
+
+function switchCmdGroup(groupId){
+  document.querySelectorAll('.cmd-group-tab').forEach(t=>t.classList.toggle('active', t.dataset.group===groupId));
+  let cardsEl = document.getElementById('commander-cards');
+  cardsEl.innerHTML = '';
+  let cmds = COMMANDERS.filter(c=>c.group===groupId);
+  cmds.forEach(cmd=>{
+    let card = document.createElement('div');
+    card.className = 'cmd-card group-'+cmd.group;
+    if(cmd.id===selectedCmdId) card.classList.add('selected');
+    card.dataset.cmd = cmd.id;
+    card.innerHTML = `
+      <div class="cmd-group-label">${COMMANDER_GROUPS.find(g=>g.id===cmd.group).name}</div>
+      <div class="cmd-name">${cmd.name}</div>
+      <div class="cmd-role">${cmd.role}</div>
+      <div class="cmd-desc">${cmd.desc}</div>
+      <div class="cmd-skill">
+        <div class="skill-name">[${cmd.skill1.key}] ${cmd.skill1.name}</div>
+        <div class="skill-info">${cmd.skill1.desc}</div>
+      </div>
+      <div class="cmd-skill">
+        <div class="skill-name">[${cmd.skill2.key}] ${cmd.skill2.name}</div>
+        <div class="skill-info">${cmd.skill2.desc}</div>
+      </div>
+    `;
+    card.onclick = ()=> selectCommander(cmd.id);
+    cardsEl.appendChild(card);
+  });
+}
+
+function selectCommander(id){
+  selectedCmdId = id;
+  document.querySelectorAll('.cmd-card').forEach(c=>c.classList.toggle('selected', c.dataset.cmd===id));
+  document.getElementById('deploy-btn').classList.add('active');
+}
+
+function deployCommander(){
+  if(!selectedCmdId) return;
+  document.getElementById('commander-screen').style.display = 'none';
+  document.getElementById('game-container').style.display = 'flex';
+  game = createGame(selectedCmdId);
+  resizeCanvas();
+  game.mouseX = null; game.mouseY = null;
+  buildSkillBar();
+  updateShopCosts();
+  updateHUD();
+  game.lastTime = performance.now();
+  requestAnimationFrame(gameLoop);
+}
+
+// ---- SKILL BAR ----
+function buildSkillBar(){
+  let bar = document.getElementById('skill-bar');
+  let cmd = game.commander;
+  let groupColor = COMMANDER_GROUPS.find(g=>g.id===cmd.group).color;
+  bar.innerHTML = `
+    <div class="skill-btn" id="skill1-btn" onclick="activateSkill(1)">
+      <span class="skill-key" style="color:${groupColor}">[Q]</span>
+      <span class="skill-btn-name" style="color:${groupColor}">${cmd.skill1.name}</span>
+      <span class="skill-cd" id="skill1-cd"></span>
+    </div>
+    <div class="skill-btn" id="skill2-btn" onclick="activateSkill(2)">
+      <span class="skill-key" style="color:${groupColor}">[W]</span>
+      <span class="skill-btn-name" style="color:${groupColor}">${cmd.skill2.name}</span>
+      <span class="skill-cd" id="skill2-cd"></span>
+    </div>
+  `;
+}
+
+function activateSkill(num){
+  if(!game || !game.running) return;
+  let skill = num===1 ? game.commander.skill1 : game.commander.skill2;
+  let cd = num===1 ? game.skill1CD : game.skill2CD;
+  if(cd > 0) return;
+  if(skill.targeting){
+    game.skillTargeting = num;
+    document.getElementById('skill'+num+'-btn').classList.add('targeting');
+    return;
+  }
+  executeSkill(num);
+}
+
+function executeSkill(num, tx, ty){
+  let cmd = game.commander;
+  let fx = getUpgradeEffects();
+  let power = 1 + fx.skillMult;
+  if(num===1) game.skill1CD = game.skill1MaxCD;
+  else game.skill2CD = game.skill2MaxCD;
+  game.skillTargeting = null;
+  document.querySelectorAll('.skill-btn').forEach(b=>b.classList.remove('targeting'));
+
+  switch(cmd.id){
+    case 'vex':
+      if(num===1){ game.overclockTimer = 12 * power; }
+      else { // orbital strike
+        let dmg = 300 * power;
+        for(let e of game.enemies){ if(e.alive && dist(e.x,e.y,tx,ty)<80*power) damageEnemy(e,dmg); }
+        addParticles(tx,ty,'#00f0ff',20);
+        game.effects.push({x:tx,y:ty,radius:80*power,dps:0,timer:0.5,color:'#00f0ff'});
+      } break;
+    case 'raze':
+      if(num===1){
+        let turrets = game.turrets.filter(t=>t);
+        if(turrets.length>0){
+          let t = turrets[Math.random()*turrets.length|0];
+          t.nanoRepair = true;
+          game.nanoRepairTarget = t;
+          game.nanoRepairTimer = 15*power;
+        }
+      } else {
+        let dmg = 200*power;
+        for(let e of game.enemies){ if(e.alive) damageEnemy(e,dmg); }
+        addParticles(game.vaultX,game.vaultY,'#00f0ff',15);
+      } break;
+    case 'forge':
+      if(num===1){ game.fortifyTimer = 20*power; }
+      else {
+        for(let i=0;i<5;i++){
+          let targets = game.enemies.filter(e=>e.alive);
+          if(targets.length>0){
+            let t = targets[Math.random()*targets.length|0];
+            damageEnemy(t,100*power);
+            addParticles(t.x,t.y,'#00f0ff',5);
+          }
+        }
+      } break;
+    case 'lyra':
+      if(num===1){ game.marketSurgeTimer = 15*power; }
+      else { game.salvageTimer = 20*power; }
+      break;
+    case 'quinn':
+      if(num===1){ game.compoundInterest = true; }
+      else { game.blackMarketTimer = 20*power; updateShopCosts(); }
+      break;
+    case 'mint':
+      if(num===1){
+        let targets = game.enemies.filter(e=>e.alive&&!e.marked);
+        for(let i=0;i<Math.min(5,targets.length);i++){
+          let idx = Math.random()*targets.length|0;
+          targets[idx].marked = true;
+          targets.splice(idx,1);
+        }
+      } else { game.economicBoomTimer = 15*power; }
+      break;
+    case 'kaine':
+      if(num===1){ // airstrike line
+        let dmg = 250*power;
+        for(let e of game.enemies){
+          if(!e.alive) continue;
+          // line from tx,ty across map
+          let cx = game.mapW/2, cy = game.mapH/2;
+          let dx = tx-cx, dy = ty-cy;
+          let len = Math.sqrt(dx*dx+dy*dy)||1;
+          // distance from enemy to line through center and click point
+          let lineDistVal = Math.abs(dy*e.x - dx*e.y + dx*cy - dy*cx)/len;
+          if(lineDistVal < 40) damageEnemy(e,dmg);
+        }
+        addParticles(tx,ty,'#ff6a00',15);
+      } else {
+        let dmg = 150*power;
+        for(let i=0;i<8;i++){
+          let targets = game.enemies.filter(e=>e.alive);
+          if(targets.length>0){
+            let t = targets[Math.random()*targets.length|0];
+            damageEnemy(t,dmg);
+            addParticles(t.x,t.y,'#ff6a00',4);
+          }
+        }
+      } break;
+    case 'havoc':
+      if(num===1){ // napalm
+        game.effects.push({x:tx,y:ty,radius:60*power,dps:50*power,timer:10,color:'#ff6a00'});
+        addParticles(tx,ty,'#ff6a00',12);
+      } else { game.gunshipTimer = 12*power; game.gunshipAngle = 0; }
+      break;
+    case 'steel':
+      if(num===1){ // howitzer
+        let dmg = 500*power;
+        let best = null, bd = Infinity;
+        for(let e of game.enemies){
+          if(!e.alive) continue;
+          let d = dist(e.x,e.y,tx,ty);
+          if(d<bd){bd=d;best=e;}
+        }
+        if(best){ damageEnemy(best,dmg); addParticles(best.x,best.y,'#ff6a00',10); }
+        else addParticles(tx,ty,'#ff6a00',8);
+      } else {
+        let dmg = 80*power;
+        for(let i=0;i<10;i++){
+          let ex = Math.random()*game.mapW;
+          let ey = Math.random()*game.mapH;
+          for(let e of game.enemies){
+            if(e.alive && dist(e.x,e.y,ex,ey)<40) damageEnemy(e,dmg);
+          }
+          addParticles(ex,ey,'#ff6a00',3);
+        }
+      } break;
+    case 'nova':
+      if(num===1){ // singularity - pull + damage
+        game.effects.push({x:tx,y:ty,radius:80*power,dps:100*power,timer:6,color:'#b44aff'});
+        // pull enemies
+        let pullInterval = setInterval(()=>{
+          if(!game||!game.running){clearInterval(pullInterval);return;}
+          for(let e of game.enemies){
+            if(!e.alive) continue;
+            let d = dist(e.x,e.y,tx,ty);
+            if(d<120*power && d>5){
+              let dx=(tx-e.x)/d, dy=(ty-e.y)/d;
+              e.x += dx*40*0.016; e.y += dy*40*0.016;
+            }
+          }
+        },16);
+        setTimeout(()=>clearInterval(pullInterval),6000);
+        addParticles(tx,ty,'#b44aff',15);
+      } else { // nuke
+        let dmg = 500*power;
+        for(let e of game.enemies){ if(e.alive && dist(e.x,e.y,tx,ty)<120*power) damageEnemy(e,dmg); }
+        game.effects.push({x:tx,y:ty,radius:120*power,dps:30*power,timer:10,color:'#39ff14'});
+        addParticles(tx,ty,'#ff2d7b',25);
+      } break;
+    case 'flux':
+      if(num===1){ // deploy temp turret
+        game.tempTurrets.push({
+          x:tx, y:ty, type:'temp', angle:0, cooldown:0, lifeTimer:20*power, nanoRepair:false, hp:200, maxHp:200,
+          customData:{ damage:60*power, fireRate:0.15, range:180, color:'#b44aff', projColor:'#b44aff', projSpeed:500, aoe:0, slow:0, chain:0, dot:0, beam:false }
+        });
+        addParticles(tx,ty,'#b44aff',8);
+      } else { // antimatter
+        let dmg = 400*power;
+        for(let e of game.enemies){ if(e.alive && dist(e.x,e.y,tx,ty)<80*power) damageEnemy(e,dmg); }
+        addParticles(tx,ty,'#b44aff',20);
+      } break;
+    case 'echo':
+      if(num===1){ game.phaseShieldTimer = 8*power; addParticles(game.vaultX,game.vaultY,'#b44aff',12); }
+      else { // particle cannon line
+        let dmg = 200*power;
+        let dx = tx-game.vaultX, dy = ty-game.vaultY;
+        let len = Math.sqrt(dx*dx+dy*dy)||1;
+        for(let e of game.enemies){
+          if(!e.alive) continue;
+          let lineDist = Math.abs(dy*e.x - dx*e.y + dx*game.vaultY - dy*game.vaultX)/len;
+          if(lineDist < 25) damageEnemy(e,dmg);
+        }
+        addParticles(tx,ty,'#b44aff',10);
+      } break;
+  }
+}
+
+// ---- SHOP ----
+function selectGuard(type){
+  if(game.skillTargeting) return; // cancel targeting mode first
+  game.selectedTurret = game.selectedTurret === type ? null : type;
+  document.querySelectorAll('.shop-item').forEach(el=>{
+    el.classList.toggle('selected', el.dataset.type === game.selectedTurret);
+  });
+}
+
+function updateShopCosts(){
+  if(!game) return;
+  for(let type in TURRET_DATA){
+    let costEl = document.getElementById('cost-'+type);
+    if(costEl) costEl.textContent = getTurretCost(type) + ' CR';
+  }
+  // update affordability
+  document.querySelectorAll('.shop-item').forEach(el=>{
+    let type = el.dataset.type;
+    if(type==='sell') return;
+    let cost = getTurretCost(type);
+    el.classList.toggle('cant-afford', game.credits < cost);
+  });
+}
+
+function placeTurret(gx, gy){
+  let type = game.selectedTurret;
+  if(!type) return;
+  let gridX = Math.floor(gx / game.gridSize) * game.gridSize + game.gridSize/2;
+  let gridY = Math.floor(gy / game.gridSize) * game.gridSize + game.gridSize/2;
+  // check vault center
+  if(dist(gridX,gridY,game.vaultX,game.vaultY) < 40) return;
+  if(type === 'sell'){
+    // find turret at position
+    let idx = game.turrets.findIndex(t=> dist(t.x,t.y,gridX,gridY)<game.gridSize/2);
+    if(idx>=0){
+      let t = game.turrets[idx];
+      let refund = Math.round(getTurretCost(t.type)*0.5);
+      game.credits += refund;
+      game.turrets.splice(idx,1);
+      addParticles(gridX,gridY,'#ff2d7b',5);
+      updateShopCosts();
+    }
+    return;
+  }
+  // check overlap
+  for(let t of game.turrets){
+    if(dist(t.x,t.y,gridX,gridY) < game.gridSize*0.8) return;
+  }
+  let cost = getTurretCost(type);
+  if(game.credits < cost) return;
+  game.credits -= cost;
+  let turretHp = TURRET_DATA[type].hp || 100;
+  game.turrets.push({ x:gridX, y:gridY, type, angle:0, cooldown:0, nanoRepair:false, hp:turretHp, maxHp:turretHp });
+  addParticles(gridX,gridY,TURRET_DATA[type].color,5);
+  updateShopCosts();
+}
+
+// ---- WAVES ----
+function sendNextWave(){
+  if(!game || game.waveActive) return;
+  game.wave++;
+  game.waveActive = true;
+  game.buildPhase = false;
+  spawnWave(game.wave);
+  // announce
+  let ann = document.getElementById('wave-announce');
+  document.getElementById('announce-num').textContent = game.wave;
+  ann.style.display = 'block';
+  ann.style.opacity = '1';
+  setTimeout(()=>{ ann.style.opacity='0'; setTimeout(()=>ann.style.display='none',500); },1500);
+  updateHUD();
+}
+
+// ---- HUD ----
+function updateHUD(){
+  if(!game) return;
+  document.getElementById('wave-display').textContent = 'WAVE ' + (game.wave || 1);
+  document.getElementById('wave-status').textContent = game.waveActive ? 'INCOMING' : 'BUILD PHASE';
+  document.getElementById('wave-status').style.color = game.waveActive ? '#ff6a00' : '#39ff14';
+  let groupColor = COMMANDER_GROUPS.find(g=>g.id===game.commander.group).color;
+  document.getElementById('commander-label').textContent = game.commander.name + ' - ' + game.commander.role;
+  document.getElementById('commander-label').style.color = groupColor;
+  document.getElementById('credits-value').textContent = Math.round(game.credits);
+  document.getElementById('ecredits-hud').textContent = 'E-CREDITS: ' + persistent.ecredits;
+  let maxCr = 10000 + getUpgradeEffects().startCR;
+  let pct = Math.min(100, (game.credits/maxCr)*100);
+  document.getElementById('threshold-fill').style.width = pct+'%';
+  document.getElementById('threshold-warn').style.display = game.credits < maxCr*0.15 ? 'block' : 'none';
+  document.getElementById('enemies-left').textContent = 'HOSTILES: ' + game.enemiesRemaining;
+  document.getElementById('score-display').textContent = 'SCORE: ' + game.score;
+  // next wave btn
+  document.getElementById('next-wave-btn').classList.toggle('disabled', game.waveActive);
+  // skill cooldowns
+  let cd1El = document.getElementById('skill1-cd');
+  let cd2El = document.getElementById('skill2-cd');
+  if(cd1El) cd1El.textContent = game.skill1CD > 0 ? Math.ceil(game.skill1CD)+'s' : 'READY';
+  if(cd2El) cd2El.textContent = game.skill2CD > 0 ? Math.ceil(game.skill2CD)+'s' : 'READY';
+  document.getElementById('skill1-btn')?.classList.toggle('on-cooldown', game.skill1CD > 0);
+  document.getElementById('skill2-btn')?.classList.toggle('on-cooldown', game.skill2CD > 0);
+  updateShopCosts();
+}
+
+// ---- UPGRADE SCREEN ----
+function showUpgradeScreen(from){
+  let screen = document.getElementById('upgrade-screen');
+  screen.classList.add('visible');
+  screen._from = from;
+  buildUpgradeUI();
+}
+
+function buildUpgradeUI(){
+  let screen = document.getElementById('upgrade-screen');
+  let cats = Object.keys(UPGRADE_TREE);
+  let activeTab = screen._activeTab || cats[0];
+  screen._activeTab = activeTab;
+  let html = `
+    <div class="upg-header">
+      <div class="upg-title-text">TECH UPGRADES</div>
+      <div class="upg-ecredits">E-CREDITS: ${persistent.ecredits}</div>
+    </div>
+    <div class="upg-tabs">
+      ${cats.map(c=>`<div class="upg-tab ${c===activeTab?'active':''}" onclick="switchUpgradeTab('${c}')">${UPGRADE_TREE[c].name}</div>`).join('')}
+    </div>
+    <div class="upg-body">
+      <div class="upg-columns centered">
+        ${UPGRADE_TREE[activeTab].columns.map(col=>`
+          <div class="upg-column">
+            <div class="upg-col-header">
+              <div class="upg-col-name">${col.name}</div>
+              <div class="upg-col-sub">${col.sub}</div>
+            </div>
+            <div class="upg-nodes">
+              ${col.nodes.map((n,i)=>{
+                let unlocked = persistent.upgrades.includes(n.id);
+                let prevUnlocked = i===0 || persistent.upgrades.includes(col.nodes[i-1].id);
+                let available = !unlocked && prevUnlocked && persistent.ecredits >= n.cost;
+                let locked = !unlocked && !available;
+                let cls = unlocked?'unlocked':(available?'available':'locked');
+                let statusText = unlocked?'UNLOCKED':(available?'AVAILABLE':'LOCKED');
+                let connector = i>0?'<div class="upg-connector"></div>':'';
+                return `${connector}<div class="upg-node ${cls}" onclick="buyUpgrade('${n.id}')">
+                  <div class="upg-node-tier">TIER ${i+1}</div>
+                  <div class="upg-node-name">${n.name}</div>
+                  <div class="upg-node-desc">${n.desc}</div>
+                  <div class="upg-node-cost">${unlocked?'OWNED':n.cost+' EC'}</div>
+                  <div class="upg-node-status">${statusText}</div>
+                </div>`;
+              }).join('')}
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+    <div class="upg-footer">
+      <button id="upg-close-btn" onclick="closeUpgradeScreen()">CLOSE</button>
+    </div>
+  `;
+  screen.innerHTML = html;
+}
+
+function switchUpgradeTab(tab){
+  let screen = document.getElementById('upgrade-screen');
+  screen._activeTab = tab;
+  buildUpgradeUI();
+}
+
+function buyUpgrade(id){
+  // find node
+  for(let cat in UPGRADE_TREE){
+    for(let col of UPGRADE_TREE[cat].columns){
+      for(let i=0;i<col.nodes.length;i++){
+        let n = col.nodes[i];
+        if(n.id !== id) continue;
+        if(persistent.upgrades.includes(id)) return;
+        let prevOk = i===0 || persistent.upgrades.includes(col.nodes[i-1].id);
+        if(!prevOk || persistent.ecredits < n.cost) return;
+        persistent.ecredits -= n.cost;
+        persistent.upgrades.push(id);
+        savePersistent();
+        buildUpgradeUI();
+        if(game) updateHUD();
+        return;
+      }
+    }
+  }
+}
+
+function closeUpgradeScreen(){
+  document.getElementById('upgrade-screen').classList.remove('visible');
+  // update title ecredits
+  document.getElementById('title-ecredits').textContent = 'E-CREDITS: ' + persistent.ecredits;
+}
+
+// ---- RESTART ----
+function restartGame(){
+  document.getElementById('overlay').style.display = 'none';
+  document.getElementById('game-container').style.display = 'none';
+  document.getElementById('title-screen').style.display = 'flex';
+  document.getElementById('title-ecredits').textContent = 'E-CREDITS: ' + persistent.ecredits;
+  game = null;
+  selectedCmdId = null;
+}
+
+// ---- INPUT ----
+canvas.addEventListener('mousemove', e=>{
+  if(!game) return;
+  let rect = canvas.getBoundingClientRect();
+  game.mouseX = e.clientX - rect.left;
+  game.mouseY = e.clientY - rect.top;
+});
+
+canvas.addEventListener('click', e=>{
+  if(!game) return;
+  let rect = canvas.getBoundingClientRect();
+  let mx = e.clientX - rect.left;
+  let my = e.clientY - rect.top;
+  if(game.skillTargeting){
+    executeSkill(game.skillTargeting, mx, my);
+    return;
+  }
+  if(game.selectedTurret){
+    placeTurret(mx, my);
+  }
+});
+
+canvas.addEventListener('contextmenu', e=>{
+  e.preventDefault();
+  if(game){
+    game.selectedTurret = null;
+    game.skillTargeting = null;
+    document.querySelectorAll('.shop-item').forEach(el=>el.classList.remove('selected'));
+    document.querySelectorAll('.skill-btn').forEach(b=>b.classList.remove('targeting'));
+  }
+});
+
+document.addEventListener('keydown', e=>{
+  if(!game || !game.running) return;
+  let key = e.key.toLowerCase();
+  if(key>='1' && key<='8'){
+    let types = ['laser','plasma','emp','tesla','cryo','missile','nano','sell'];
+    selectGuard(types[parseInt(key)-1]);
+  }
+  if(key==='q') activateSkill(1);
+  if(key==='w') activateSkill(2);
+  if(key==='escape'){
+    game.selectedTurret = null;
+    game.skillTargeting = null;
+    document.querySelectorAll('.shop-item').forEach(el=>el.classList.remove('selected'));
+    document.querySelectorAll('.skill-btn').forEach(b=>b.classList.remove('targeting'));
+  }
+});
+
+window.addEventListener('resize', ()=>{
+  if(game) resizeCanvas();
+});
+
+// ============================================================
+// SECTION 5: INIT
+// ============================================================
+// ---- INITIALIZATION ----
+document.getElementById('title-ecredits').textContent = 'E-CREDITS: ' + persistent.ecredits;
+
+// Make wave announce fade work
+(function(){
+  let ann = document.getElementById('wave-announce');
+  ann.style.transition = 'opacity 0.5s';
+})();
+</script>
+</body>
+</html>
