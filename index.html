@@ -1561,19 +1561,28 @@ function render(){
       ctx.fillStyle = 'rgba(255,45,123,' + Math.min(0.5, t.hitFlash * 4) + ')';
       ctx.fill();
     }
-    // turret HP bar
-    if(t.maxHp && t.hp < t.maxHp){
+    // turret HP bar - always visible
+    if(t.maxHp){
       let bw = 22;
       let bx = t.x - bw/2;
       let by = t.y + 16;
+      // background
       ctx.fillStyle = 'rgba(0,0,0,0.7)';
-      ctx.fillRect(bx-1, by-1, bw+2, 5);
+      ctx.fillRect(bx-1, by-1, bw+2, 7);
+      // empty bar track
       ctx.fillStyle = 'rgba(60,20,20,0.8)';
       ctx.fillRect(bx, by, bw, 3);
+      // filled hp portion
       let hpRatio = Math.max(0, t.hp / t.maxHp);
       let hpColor = hpRatio > 0.5 ? 'rgba(0,255,100,0.85)' : hpRatio > 0.25 ? 'rgba(255,200,0,0.85)' : 'rgba(255,50,50,0.95)';
       ctx.fillStyle = hpColor;
       ctx.fillRect(bx, by, bw * hpRatio, 3);
+      // HP number text
+      ctx.font = '7px Orbitron, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = hpRatio > 0.5 ? 'rgba(200,240,220,0.9)' : hpRatio > 0.25 ? 'rgba(255,230,150,0.9)' : 'rgba(255,150,150,0.95)';
+      ctx.fillText(Math.ceil(t.hp) + '/' + t.maxHp, t.x, by + 10);
+      ctx.textAlign = 'start';
     }
     // beam effect
     if(t.beamTarget && t.beamTarget.timer > 0){
