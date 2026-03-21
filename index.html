@@ -1242,64 +1242,336 @@ function render(){
 
   // Turrets
   let allT = [...game.turrets, ...game.tempTurrets];
+  let now = Date.now();
   for(let t of allT){
     let td = TURRET_DATA[t.type] || t.customData;
     let color = td ? td.color : '#ffffff';
-    // base
+    let a = t.angle || 0;
+    let typ = t.type;
+    ctx.save();
+    ctx.translate(t.x, t.y);
+
+    // --- Ground shadow ---
     ctx.beginPath();
-    ctx.arc(t.x, t.y, 12, 0, Math.PI*2);
-    ctx.fillStyle = 'rgba(8,16,32,0.9)';
+    ctx.ellipse(0, 2, 14, 6, 0, 0, Math.PI*2);
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
     ctx.fill();
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-    // barrel
-    let bLen = 16;
-    ctx.beginPath();
-    ctx.moveTo(t.x, t.y);
-    ctx.lineTo(t.x + Math.cos(t.angle||0)*bLen, t.y + Math.sin(t.angle||0)*bLen);
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 2.5;
-    ctx.stroke();
-    // range indicator when selected
-    if(game.selectedTurret === t.type){
-      // show range on hover - not needed here
+
+    // --- Per-type detailed drawing ---
+    if(typ === 'laser'){
+      // Hexagonal base plate
+      ctx.beginPath();
+      for(let i=0;i<6;i++){ let ha=Math.PI/3*i - Math.PI/6; ctx.lineTo(Math.cos(ha)*13, Math.sin(ha)*13); }
+      ctx.closePath();
+      let bg = ctx.createRadialGradient(0,0,2,0,0,14);
+      bg.addColorStop(0,'#0a2030'); bg.addColorStop(1,'#040c14');
+      ctx.fillStyle = bg; ctx.fill();
+      ctx.strokeStyle = color; ctx.lineWidth = 1.2; ctx.stroke();
+      // Inner ring
+      ctx.beginPath(); ctx.arc(0,0,7,0,Math.PI*2);
+      ctx.strokeStyle = color+'88'; ctx.lineWidth = 0.8; ctx.stroke();
+      // Rotating scanner ring
+      let sr = now/800;
+      ctx.beginPath(); ctx.arc(0,0,10, sr, sr+Math.PI*0.6);
+      ctx.strokeStyle = color+'66'; ctx.lineWidth = 1.5; ctx.stroke();
+      // Core glow
+      ctx.beginPath(); ctx.arc(0,0,3,0,Math.PI*2);
+      let cg = ctx.createRadialGradient(0,0,0,0,0,4);
+      cg.addColorStop(0,color); cg.addColorStop(1,'transparent');
+      ctx.fillStyle = cg; ctx.fill();
+      // Dual barrel
+      ctx.save(); ctx.rotate(a);
+      ctx.fillStyle = '#1a3040';
+      ctx.fillRect(4, -3.5, 15, 2.5); ctx.fillRect(4, 1, 15, 2.5);
+      ctx.strokeStyle = color; ctx.lineWidth = 0.8;
+      ctx.strokeRect(4, -3.5, 15, 2.5); ctx.strokeRect(4, 1, 15, 2.5);
+      // Muzzle tip glow
+      ctx.beginPath(); ctx.arc(19, 0, 2, 0, Math.PI*2);
+      ctx.fillStyle = color+'99'; ctx.fill();
+      ctx.restore();
+
+    } else if(typ === 'plasma'){
+      // Octagonal armored base
+      ctx.beginPath();
+      for(let i=0;i<8;i++){ let ha=Math.PI/4*i - Math.PI/8; ctx.lineTo(Math.cos(ha)*14, Math.sin(ha)*14); }
+      ctx.closePath();
+      let bg = ctx.createRadialGradient(0,0,2,0,0,15);
+      bg.addColorStop(0,'#2a1800'); bg.addColorStop(1,'#0c0600');
+      ctx.fillStyle = bg; ctx.fill();
+      ctx.strokeStyle = '#ff6a0066'; ctx.lineWidth = 1.5; ctx.stroke();
+      // Armor plate lines
+      for(let i=0;i<4;i++){
+        let ha = Math.PI/2*i;
+        ctx.beginPath(); ctx.moveTo(Math.cos(ha)*6, Math.sin(ha)*6); ctx.lineTo(Math.cos(ha)*13, Math.sin(ha)*13);
+        ctx.strokeStyle = '#ff6a0033'; ctx.lineWidth = 0.6; ctx.stroke();
+      }
+      // Inner heat core (pulsing)
+      let hp2 = 0.6+0.4*Math.sin(now/300);
+      ctx.beginPath(); ctx.arc(0,0,5,0,Math.PI*2);
+      let hg = ctx.createRadialGradient(0,0,0,0,0,6);
+      hg.addColorStop(0,'rgba(255,150,0,'+hp2+')'); hg.addColorStop(1,'transparent');
+      ctx.fillStyle = hg; ctx.fill();
+      // Wide cannon barrel
+      ctx.save(); ctx.rotate(a);
+      ctx.beginPath();
+      ctx.moveTo(5,-5); ctx.lineTo(14,-4); ctx.lineTo(17,-2); ctx.lineTo(17,2); ctx.lineTo(14,4); ctx.lineTo(5,5); ctx.closePath();
+      ctx.fillStyle = '#1a1000'; ctx.fill();
+      ctx.strokeStyle = color; ctx.lineWidth = 1; ctx.stroke();
+      // Barrel vents
+      ctx.fillStyle = color+'55';
+      ctx.fillRect(8,-3,1.5,6); ctx.fillRect(11,-2.5,1.5,5);
+      // Muzzle glow
+      ctx.beginPath(); ctx.arc(17,0,3,0,Math.PI*2);
+      ctx.fillStyle = 'rgba(255,106,0,'+hp2*0.5+')'; ctx.fill();
+      ctx.restore();
+
+    } else if(typ === 'emp'){
+      // Circular floating drone base
+      ctx.beginPath(); ctx.arc(0,0,12,0,Math.PI*2);
+      let bg = ctx.createRadialGradient(0,0,3,0,0,13);
+      bg.addColorStop(0,'#150830'); bg.addColorStop(1,'#08021a');
+      ctx.fillStyle = bg; ctx.fill();
+      // Rotating ring segments
+      let er = now/600;
+      for(let i=0;i<3;i++){
+        ctx.beginPath(); ctx.arc(0,0,11, er+Math.PI*2/3*i, er+Math.PI*2/3*i+Math.PI*0.4);
+        ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.stroke();
+      }
+      // Inner pulse ring
+      let ep = 8+2*Math.sin(now/400);
+      ctx.beginPath(); ctx.arc(0,0,ep,0,Math.PI*2);
+      ctx.strokeStyle = color+'44'; ctx.lineWidth = 0.5; ctx.stroke();
+      // Center orb
+      ctx.beginPath(); ctx.arc(0,0,4,0,Math.PI*2);
+      let eg = ctx.createRadialGradient(0,0,0,0,0,5);
+      eg.addColorStop(0,color); eg.addColorStop(0.6,color+'88'); eg.addColorStop(1,'transparent');
+      ctx.fillStyle = eg; ctx.fill();
+      // 4 antenna nubs
+      for(let i=0;i<4;i++){
+        let na = Math.PI/2*i+er*0.3;
+        ctx.beginPath(); ctx.arc(Math.cos(na)*7, Math.sin(na)*7, 1.5, 0, Math.PI*2);
+        ctx.fillStyle = color+'aa'; ctx.fill();
+      }
+      // No barrel - it's a drone emitter
+
+    } else if(typ === 'tesla'){
+      // Square-ish tech base
+      ctx.save();
+      ctx.rotate(Math.PI/4);
+      ctx.beginPath();
+      ctx.roundRect(-10,-10,20,20,3);
+      let bg = ctx.createRadialGradient(0,0,2,0,0,14);
+      bg.addColorStop(0,'#0a2028'); bg.addColorStop(1,'#041018');
+      ctx.fillStyle = bg; ctx.fill();
+      ctx.strokeStyle = '#4af0ff55'; ctx.lineWidth = 1; ctx.stroke();
+      ctx.restore();
+      // Coil rings (3 stacked rings)
+      for(let i=0;i<3;i++){
+        let cr = 5+i*3;
+        let ca = 0.8 - i*0.2;
+        ctx.beginPath(); ctx.arc(0,0,cr,0,Math.PI*2);
+        ctx.strokeStyle = 'rgba(74,240,255,'+ca+')'; ctx.lineWidth = 1.2-i*0.3; ctx.stroke();
+      }
+      // Tesla spike on top
+      ctx.save(); ctx.rotate(a);
+      ctx.beginPath();
+      ctx.moveTo(0,-2); ctx.lineTo(18,-1); ctx.lineTo(20,0); ctx.lineTo(18,1); ctx.lineTo(0,2);
+      ctx.closePath();
+      ctx.fillStyle = '#0a2028'; ctx.fill();
+      ctx.strokeStyle = color; ctx.lineWidth = 0.8; ctx.stroke();
+      // Electricity spark at tip
+      let sp = Math.sin(now/100)*2;
+      ctx.beginPath(); ctx.moveTo(20,0); ctx.lineTo(22,sp); ctx.lineTo(24,-sp); ctx.lineTo(26,0);
+      ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.stroke();
+      ctx.restore();
+      // Center arc glow
+      let tg = ctx.createRadialGradient(0,0,0,0,0,4);
+      tg.addColorStop(0,'rgba(74,240,255,0.9)'); tg.addColorStop(1,'transparent');
+      ctx.beginPath(); ctx.arc(0,0,4,0,Math.PI*2); ctx.fillStyle = tg; ctx.fill();
+
+    } else if(typ === 'cryo'){
+      // Snowflake-style base
+      ctx.beginPath();
+      for(let i=0;i<6;i++){
+        let ha = Math.PI/3*i;
+        let ox = i%2===0 ? 13 : 10;
+        ctx.lineTo(Math.cos(ha)*ox, Math.sin(ha)*ox);
+      }
+      ctx.closePath();
+      let bg = ctx.createRadialGradient(0,0,2,0,0,14);
+      bg.addColorStop(0,'#0a2830'); bg.addColorStop(1,'#041820');
+      ctx.fillStyle = bg; ctx.fill();
+      ctx.strokeStyle = '#80ffff55'; ctx.lineWidth = 1; ctx.stroke();
+      // Frost crystal lines from center
+      for(let i=0;i<6;i++){
+        let fa = Math.PI/3*i + now/3000;
+        ctx.beginPath(); ctx.moveTo(0,0);
+        ctx.lineTo(Math.cos(fa)*9, Math.sin(fa)*9);
+        ctx.strokeStyle = '#80ffff33'; ctx.lineWidth = 0.5; ctx.stroke();
+        // small branches
+        let bx = Math.cos(fa)*6, by2 = Math.sin(fa)*6;
+        ctx.beginPath(); ctx.moveTo(bx,by2);
+        ctx.lineTo(bx+Math.cos(fa+0.6)*3, by2+Math.sin(fa+0.6)*3);
+        ctx.stroke();
+      }
+      // Center frost orb
+      let fp = 0.7+0.3*Math.sin(now/500);
+      ctx.beginPath(); ctx.arc(0,0,4,0,Math.PI*2);
+      let fg = ctx.createRadialGradient(0,0,0,0,0,5);
+      fg.addColorStop(0,'rgba(128,255,255,'+fp+')'); fg.addColorStop(1,'transparent');
+      ctx.fillStyle = fg; ctx.fill();
+      // Beam emitter barrel (wide nozzle)
+      ctx.save(); ctx.rotate(a);
+      ctx.beginPath();
+      ctx.moveTo(4,-2); ctx.lineTo(12,-1.5); ctx.lineTo(16,-4); ctx.lineTo(16,4); ctx.lineTo(12,1.5); ctx.lineTo(4,2);
+      ctx.closePath();
+      ctx.fillStyle = '#0a1820'; ctx.fill();
+      ctx.strokeStyle = '#80ffff'; ctx.lineWidth = 0.8; ctx.stroke();
+      // Frost mist at nozzle
+      ctx.beginPath(); ctx.arc(16,0,3,0,Math.PI*2);
+      ctx.fillStyle = 'rgba(128,255,255,'+(fp*0.3)+')'; ctx.fill();
+      ctx.restore();
+
+    } else if(typ === 'missile'){
+      // Heavy armored pentagon base
+      ctx.beginPath();
+      for(let i=0;i<5;i++){ let ha=Math.PI*2/5*i - Math.PI/2; ctx.lineTo(Math.cos(ha)*14, Math.sin(ha)*14); }
+      ctx.closePath();
+      let bg = ctx.createRadialGradient(0,0,2,0,0,15);
+      bg.addColorStop(0,'#2a0808'); bg.addColorStop(1,'#100404');
+      ctx.fillStyle = bg; ctx.fill();
+      ctx.strokeStyle = '#ff334466'; ctx.lineWidth = 1.5; ctx.stroke();
+      // Armor cross-beams
+      ctx.beginPath(); ctx.moveTo(-10,0); ctx.lineTo(10,0); ctx.moveTo(0,-10); ctx.lineTo(0,10);
+      ctx.strokeStyle = '#ff334422'; ctx.lineWidth = 0.8; ctx.stroke();
+      // 4 missile tubes
+      ctx.save(); ctx.rotate(a);
+      let tubes = [[-4,-5],[-4,5],[4,-5],[4,5]];
+      for(let tb of tubes){
+        ctx.beginPath();
+        ctx.roundRect(tb[0]+2, tb[1]-1.5, 12, 3, 1);
+        ctx.fillStyle = '#1a0808'; ctx.fill();
+        ctx.strokeStyle = '#ff3344'; ctx.lineWidth = 0.6; ctx.stroke();
+        // Missile head
+        ctx.beginPath(); ctx.arc(tb[0]+14, tb[1], 1.5, 0, Math.PI*2);
+        ctx.fillStyle = '#ff5555'; ctx.fill();
+      }
+      ctx.restore();
+      // Center targeting light (blinks)
+      let mb = Math.sin(now/200) > 0 ? 0.8 : 0.2;
+      ctx.beginPath(); ctx.arc(0,0,3,0,Math.PI*2);
+      ctx.fillStyle = 'rgba(255,51,68,'+mb+')'; ctx.fill();
+
+    } else if(typ === 'nano'){
+      // Organic-looking circular base with spore pods
+      ctx.beginPath(); ctx.arc(0,0,12,0,Math.PI*2);
+      let bg = ctx.createRadialGradient(0,0,2,0,0,13);
+      bg.addColorStop(0,'#082008'); bg.addColorStop(1,'#021004');
+      ctx.fillStyle = bg; ctx.fill();
+      ctx.strokeStyle = '#39ff1444'; ctx.lineWidth = 1; ctx.stroke();
+      // Swirling nano particles
+      for(let i=0;i<8;i++){
+        let na2 = now/400 + Math.PI*2/8*i;
+        let nr = 6+3*Math.sin(now/300+i);
+        let nx = Math.cos(na2)*nr, ny = Math.sin(na2)*nr;
+        ctx.beginPath(); ctx.arc(nx,ny,1.2,0,Math.PI*2);
+        ctx.fillStyle = '#39ff14'; ctx.globalAlpha = 0.4+0.3*Math.sin(now/200+i); ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+      // 3 spore pod bumps
+      for(let i=0;i<3;i++){
+        let pa = Math.PI*2/3*i + now/5000;
+        let px = Math.cos(pa)*9, py = Math.sin(pa)*9;
+        ctx.beginPath(); ctx.arc(px,py,3,0,Math.PI*2);
+        let pg = ctx.createRadialGradient(px,py,0,px,py,3);
+        pg.addColorStop(0,'#39ff14'); pg.addColorStop(1,'#39ff1400');
+        ctx.fillStyle = pg; ctx.fill();
+      }
+      // Center bio-core
+      let np = 0.6+0.4*Math.sin(now/350);
+      ctx.beginPath(); ctx.arc(0,0,4,0,Math.PI*2);
+      let ng = ctx.createRadialGradient(0,0,0,0,0,5);
+      ng.addColorStop(0,'rgba(57,255,20,'+np+')'); ng.addColorStop(1,'transparent');
+      ctx.fillStyle = ng; ctx.fill();
+      // No traditional barrel - emits cloud around it
+
+    } else {
+      // Temp/experimental turret or unknown - glowing prototype
+      ctx.beginPath(); ctx.arc(0,0,12,0,Math.PI*2);
+      let bg = ctx.createRadialGradient(0,0,2,0,0,13);
+      bg.addColorStop(0,'#1a0a30'); bg.addColorStop(1,'#0a0418');
+      ctx.fillStyle = bg; ctx.fill();
+      // Unstable rotating hexagon
+      ctx.save(); ctx.rotate(now/400);
+      ctx.beginPath();
+      for(let i=0;i<6;i++){ let ha=Math.PI/3*i; ctx.lineTo(Math.cos(ha)*11, Math.sin(ha)*11); }
+      ctx.closePath();
+      ctx.strokeStyle = color+'88'; ctx.lineWidth = 1.5; ctx.stroke();
+      ctx.restore();
+      // Flicker core
+      let xp = 0.5+0.5*Math.sin(now/150);
+      ctx.beginPath(); ctx.arc(0,0,5,0,Math.PI*2);
+      let xg = ctx.createRadialGradient(0,0,0,0,0,6);
+      xg.addColorStop(0,'rgba(180,74,255,'+xp+')'); xg.addColorStop(1,'transparent');
+      ctx.fillStyle = xg; ctx.fill();
+      // Rapid-fire barrel
+      ctx.save(); ctx.rotate(a);
+      ctx.fillStyle = '#1a0a30';
+      ctx.fillRect(4,-2,14,4);
+      ctx.strokeStyle = color; ctx.lineWidth = 0.8;
+      ctx.strokeRect(4,-2,14,4);
+      ctx.beginPath(); ctx.arc(18,0,2.5,0,Math.PI*2);
+      ctx.fillStyle = color+'66'; ctx.fill();
+      ctx.restore();
     }
+
+    ctx.restore();
+    // --- Effects drawn in world space (not translated) ---
+
     // fortify shield
     if(game.fortifyTimer > 0){
       ctx.beginPath();
-      ctx.arc(t.x, t.y, 15, 0, Math.PI*2);
-      ctx.strokeStyle = 'rgba(0,240,255,0.3)';
-      ctx.lineWidth = 1;
+      ctx.arc(t.x, t.y, 17, 0, Math.PI*2);
+      ctx.strokeStyle = 'rgba(0,240,255,0.35)';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([3,3]);
       ctx.stroke();
+      ctx.setLineDash([]);
     }
     // nano repair glow
     if(t.nanoRepair){
       ctx.beginPath();
-      ctx.arc(t.x, t.y, 16, 0, Math.PI*2);
+      ctx.arc(t.x, t.y, 18, 0, Math.PI*2);
       ctx.strokeStyle = 'rgba(57,255,20,0.5)';
       ctx.lineWidth = 2;
       ctx.stroke();
+      // sparkle particles
+      let sa = now/300;
+      for(let i=0;i<4;i++){
+        let sx = t.x+Math.cos(sa+Math.PI/2*i)*16, sy = t.y+Math.sin(sa+Math.PI/2*i)*16;
+        ctx.beginPath(); ctx.arc(sx,sy,1.5,0,Math.PI*2);
+        ctx.fillStyle = '#39ff14'; ctx.fill();
+      }
     }
     // damage flash
     if(t.hitFlash && t.hitFlash > 0){
       t.hitFlash -= 0.016;
       ctx.beginPath();
-      ctx.arc(t.x, t.y, 14, 0, Math.PI*2);
-      ctx.fillStyle = 'rgba(255,45,123,' + Math.min(0.6, t.hitFlash * 4) + ')';
+      ctx.arc(t.x, t.y, 15, 0, Math.PI*2);
+      ctx.fillStyle = 'rgba(255,45,123,' + Math.min(0.5, t.hitFlash * 4) + ')';
       ctx.fill();
     }
     // turret HP bar
     if(t.maxHp && t.hp < t.maxHp){
-      let bw = 20;
+      let bw = 22;
       let bx = t.x - bw/2;
-      let by = t.y + 14;
-      ctx.fillStyle = 'rgba(0,0,0,0.6)';
+      let by = t.y + 16;
+      ctx.fillStyle = 'rgba(0,0,0,0.7)';
       ctx.fillRect(bx-1, by-1, bw+2, 5);
-      ctx.fillStyle = 'rgba(255,50,50,0.7)';
+      ctx.fillStyle = 'rgba(60,20,20,0.8)';
       ctx.fillRect(bx, by, bw, 3);
       let hpRatio = Math.max(0, t.hp / t.maxHp);
-      let hpColor = hpRatio > 0.5 ? 'rgba(0,255,100,0.8)' : hpRatio > 0.25 ? 'rgba(255,200,0,0.8)' : 'rgba(255,50,50,0.9)';
+      let hpColor = hpRatio > 0.5 ? 'rgba(0,255,100,0.85)' : hpRatio > 0.25 ? 'rgba(255,200,0,0.85)' : 'rgba(255,50,50,0.95)';
       ctx.fillStyle = hpColor;
       ctx.fillRect(bx, by, bw * hpRatio, 3);
     }
