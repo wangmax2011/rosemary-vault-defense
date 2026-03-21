@@ -403,6 +403,97 @@ html, body { width:100%; height:100%; overflow:hidden; background:var(--bg-dark)
 @keyframes titlePulse { 0%,100%{ opacity:1; } 50%{ opacity:0.85; } }
 @keyframes warnBlink { 0%,100%{ opacity:1; } 50%{ opacity:0.2; } }
 @keyframes cardFloat { 0%,100%{ transform:translateY(0); } 50%{ transform:translateY(-4px); } }
+
+/* STOCK MARKET */
+#stock-market {
+  position:absolute; top:60px; right:10px; z-index:180;
+  width:380px; background:rgba(8,16,32,0.96); border:1px solid rgba(0,240,255,0.2);
+  border-radius:8px; backdrop-filter:blur(10px); overflow:hidden;
+  box-shadow: 0 0 30px rgba(0,0,0,0.5);
+}
+.stock-header {
+  padding:0.8rem 1rem; border-bottom:1px solid rgba(0,240,255,0.15);
+  display:flex; flex-direction:column; gap:2px;
+}
+.stock-title {
+  font-family:'Orbitron',sans-serif; font-size:0.75rem; font-weight:700;
+  color:var(--neon-cyan); letter-spacing:0.2em;
+}
+.stock-subtitle {
+  font-size:0.55rem; color:#5a7a8a; letter-spacing:0.1em;
+}
+#stock-close-btn {
+  position:absolute; top:0.8rem; right:0.8rem;
+  padding:0.3rem 0.8rem; background:transparent;
+  border:1px solid var(--neon-pink); color:var(--neon-pink);
+  font-family:'Orbitron',sans-serif; font-size:0.55rem; letter-spacing:0.1em;
+  cursor:pointer; transition:all 0.2s;
+}
+#stock-close-btn:hover { background:rgba(255,45,123,0.1); }
+#stock-list { padding:0.5rem; max-height:400px; overflow-y:auto; }
+.stock-row {
+  padding:0.6rem 0.5rem; margin-bottom:0.4rem;
+  border:1px solid rgba(255,255,255,0.06); border-radius:6px;
+  background:rgba(255,255,255,0.02); transition:all 0.2s;
+}
+.stock-row:hover { background:rgba(255,255,255,0.04); }
+.stock-row-top {
+  display:flex; align-items:center; justify-content:space-between; margin-bottom:0.4rem;
+}
+.stock-id {
+  font-family:'Orbitron',sans-serif; font-size:0.8rem; font-weight:700;
+  letter-spacing:0.1em;
+}
+.stock-name { font-size:0.55rem; color:#5a7a8a; margin-left:0.5rem; }
+.stock-price {
+  font-family:'Orbitron',sans-serif; font-size:0.85rem; font-weight:700;
+}
+.stock-change {
+  font-family:'Orbitron',sans-serif; font-size:0.6rem; margin-left:0.5rem;
+}
+.stock-change.up { color:#39ff14; }
+.stock-change.down { color:#ff2d7b; }
+.stock-chart {
+  height:30px; margin:0.3rem 0; position:relative;
+  background:rgba(0,0,0,0.3); border-radius:3px; overflow:hidden;
+}
+.stock-chart canvas { width:100%; height:100%; }
+.stock-row-bottom {
+  display:flex; align-items:center; gap:0.4rem; margin-top:0.4rem;
+}
+.stock-shares {
+  font-size:0.6rem; color:#8a9aaa; flex:1;
+}
+.stock-shares span { color:var(--neon-cyan); font-family:'Orbitron',sans-serif; }
+.stock-btn {
+  padding:0.25rem 0.6rem; border-radius:3px; cursor:pointer;
+  font-family:'Orbitron',sans-serif; font-size:0.55rem; letter-spacing:0.08em;
+  transition:all 0.2s; background:transparent;
+}
+.stock-btn.buy {
+  border:1px solid #39ff14; color:#39ff14;
+}
+.stock-btn.buy:hover { background:rgba(57,255,20,0.1); }
+.stock-btn.buy.disabled { opacity:0.3; cursor:not-allowed; }
+.stock-btn.sell {
+  border:1px solid #ff2d7b; color:#ff2d7b;
+}
+.stock-btn.sell:hover { background:rgba(255,45,123,0.1); }
+.stock-btn.sell.disabled { opacity:0.3; cursor:not-allowed; }
+.stock-value {
+  font-size:0.55rem; font-family:'Orbitron',sans-serif; color:var(--neon-green);
+  margin-left:auto;
+}
+.stock-footer {
+  padding:0.5rem 1rem; border-top:1px solid rgba(255,255,255,0.06);
+}
+.stock-tip { font-size:0.5rem; color:#3a5a6a; letter-spacing:0.05em; }
+.stock-event {
+  font-family:'Orbitron',sans-serif; font-size:0.5rem; letter-spacing:0.1em;
+  padding:0.15rem 0.4rem; border-radius:3px; margin-left:0.4rem;
+}
+.stock-event.crash { background:rgba(255,45,123,0.15); color:#ff2d7b; }
+.stock-event.boom { background:rgba(57,255,20,0.15); color:#39ff14; }
 </style>
 </head>
 <body>
@@ -525,6 +616,7 @@ html, body { width:100%; height:100%; overflow:hidden; background:var(--bg-dark)
           <div class="hotkey">[8]</div>
         </div>
       </div>
+      <div id="stock-market-btn" onclick="toggleStockMarket()" style="padding:0.5rem 1rem; background:transparent; border:1px solid var(--neon-cyan); color:var(--neon-cyan); font-family:'Orbitron',sans-serif; font-size:0.6rem; letter-spacing:0.1em; cursor:pointer; transition:all 0.3s; white-space:nowrap; margin-left:0.5rem;">MARKET [M]</div>
       <div id="upgrades-game-btn" onclick="showUpgradeScreen('game')">UPGRADES</div>
       <div id="next-wave-btn" onclick="sendNextWave()">SEND NEXT WAVE &#9654;</div>
     </div>
@@ -539,6 +631,17 @@ html, body { width:100%; height:100%; overflow:hidden; background:var(--bg-dark)
   <div id="wave-announce" style="display:none;">
     <div class="announce-text">WAVE <span id="announce-num">1</span></div>
     <div class="announce-sub">HOSTILES INCOMING</div>
+  </div>
+  <div id="stock-market" style="display:none;">
+    <div class="stock-header">
+      <span class="stock-title">ROSEMARY STOCK EXCHANGE</span>
+      <span class="stock-subtitle">BUY LOW, SELL HIGH - PRICES UPDATE EACH WAVE</span>
+      <button id="stock-close-btn" onclick="toggleStockMarket()">CLOSE [M]</button>
+    </div>
+    <div id="stock-list"></div>
+    <div class="stock-footer">
+      <span class="stock-tip">TIP: Watch trends. Crashes (red flash) = buying opportunity. Trade during build phase only.</span>
+    </div>
   </div>
   <div id="upgrade-screen"></div>
 </div>
@@ -687,6 +790,13 @@ const WAVE_COMPOSITIONS = [
   [{type:'tank',count:6},{type:'shielded',count:6},{type:'healer',count:3},{type:'boss',count:2}]
 ];
 
+const STOCK_DATA = [
+  { id:'NRG', name:'NovaCorp Energy', basePrice:100, volatility:0.15, color:'#00f0ff', trend:0 },
+  { id:'MIL', name:'Ironclad Military', basePrice:200, volatility:0.20, color:'#ff6a00', trend:0 },
+  { id:'TEC', name:'Quantum Systems', basePrice:150, volatility:0.25, color:'#b44aff', trend:0 },
+  { id:'BIO', name:'Genesis Biotech', basePrice:80, volatility:0.30, color:'#39ff14', trend:0 }
+];
+
 // ============================================================
 // SECTION 2: GAME STATE & ENGINE
 // ============================================================
@@ -775,7 +885,20 @@ function createGame(commanderId){
     killComboTimer: 0,
     skillBanner: null,
     skillBannerTimer: 0,
-    vaultHitFlash: 0
+    vaultHitFlash: 0,
+    stocks: STOCK_DATA.map(s => ({
+      id: s.id,
+      name: s.name,
+      price: s.basePrice,
+      prevPrice: s.basePrice,
+      history: [s.basePrice],
+      shares: 0,
+      color: s.color,
+      volatility: s.volatility,
+      trend: (Math.random()-0.5)*0.1,
+      basePrice: s.basePrice
+    })),
+    stockMarketOpen: false
   };
 }
 
@@ -1741,6 +1864,8 @@ function checkWaveEnd(){
   if(game.waveActive && game.enemiesRemaining <= 0 && game.spawnQueue.length === 0){
     game.waveActive = false;
     game.buildPhase = true;
+    updateStockPrices();
+    if(game.stockMarketOpen) updateStockMarketUI();
     // compound interest
     if(game.compoundInterest){
       game.credits += Math.round(game.credits * 0.03);
@@ -1751,6 +1876,131 @@ function checkWaveEnd(){
     persistent.ecredits += ecr;
     savePersistent();
     updateHUD();
+  }
+}
+
+function updateStockPrices(){
+  for(let s of game.stocks){
+    s.prevPrice = s.price;
+    // Random walk with momentum
+    s.trend += (Math.random()-0.5) * 0.08;
+    s.trend = Math.max(-0.3, Math.min(0.3, s.trend)); // clamp trend
+    // Volatility spike chance (5% crash, 5% boom)
+    let event = Math.random();
+    let eventMult = 1;
+    if(event < 0.05){ eventMult = 0.6 + Math.random()*0.2; s.trend = -0.2; } // crash
+    else if(event > 0.95){ eventMult = 1.3 + Math.random()*0.3; s.trend = 0.2; } // boom
+
+    let change = (s.trend + (Math.random()-0.5)*s.volatility) * s.price * eventMult;
+    s.price = Math.max(10, Math.round(s.price + change));
+    s.history.push(s.price);
+    if(s.history.length > 20) s.history.shift(); // keep last 20 waves
+  }
+}
+
+function buyStock(stockId, amount){
+  if(!game || game.waveActive) return; // can only trade during build phase
+  let s = game.stocks.find(st => st.id === stockId);
+  if(!s) return;
+  let totalCost = s.price * amount;
+  if(game.credits < totalCost) return;
+  game.credits -= totalCost;
+  s.shares += amount;
+  updateStockMarketUI();
+  updateHUD();
+  addFloatingText(game.vaultX, game.vaultY-30, '-'+totalCost+' CR ('+amount+'x '+s.id+')', s.color, 11);
+}
+
+function sellStock(stockId, amount){
+  if(!game) return;
+  let s = game.stocks.find(st => st.id === stockId);
+  if(!s || s.shares < amount) return;
+  let totalGain = s.price * amount;
+  game.credits += totalGain;
+  s.shares -= amount;
+  game.score += Math.max(0, totalGain - s.basePrice*amount); // score bonus for profit
+  updateStockMarketUI();
+  updateHUD();
+  addFloatingText(game.vaultX, game.vaultY-30, '+'+totalGain+' CR ('+amount+'x '+s.id+')', '#39ff14', 11);
+}
+
+function toggleStockMarket(){
+  if(!game) return;
+  game.stockMarketOpen = !game.stockMarketOpen;
+  document.getElementById('stock-market').style.display = game.stockMarketOpen ? 'block' : 'none';
+  if(game.stockMarketOpen) updateStockMarketUI();
+}
+
+function updateStockMarketUI(){
+  if(!game) return;
+  let list = document.getElementById('stock-list');
+  if(!list) return;
+  let html = '';
+  for(let s of game.stocks){
+    let change = s.price - s.prevPrice;
+    let changePct = s.prevPrice > 0 ? ((change/s.prevPrice)*100).toFixed(1) : '0.0';
+    let isUp = change >= 0;
+    let holdValue = s.shares * s.price;
+    let canBuy = !game.waveActive && game.credits >= s.price;
+    let canSell = s.shares > 0;
+    // Detect crash/boom (>20% change)
+    let eventTag = '';
+    if(Math.abs(change/s.prevPrice) > 0.2 && s.history.length > 1){
+      eventTag = change < 0 ? '<span class="stock-event crash">CRASH</span>' : '<span class="stock-event boom">BOOM</span>';
+    }
+
+    html += '<div class="stock-row">';
+    html += '<div class="stock-row-top">';
+    html += '<div><span class="stock-id" style="color:'+s.color+'">'+s.id+'</span><span class="stock-name">'+s.name+'</span>'+eventTag+'</div>';
+    html += '<div><span class="stock-price" style="color:'+s.color+'">'+s.price+' CR</span>';
+    html += '<span class="stock-change '+(isUp?'up':'down')+'">'+(isUp?'+':'')+change+' ('+(isUp?'+':'')+changePct+'%)</span></div>';
+    html += '</div>';
+    // Mini chart
+    html += '<div class="stock-chart"><canvas id="chart-'+s.id+'" width="360" height="30"></canvas></div>';
+    // Holdings and buttons
+    html += '<div class="stock-row-bottom">';
+    html += '<span class="stock-shares">HELD: <span>'+s.shares+'</span></span>';
+    if(holdValue > 0) html += '<span class="stock-value">VALUE: '+holdValue+' CR</span>';
+    html += '<button class="stock-btn buy'+(canBuy?'':' disabled')+'" onclick="buyStock(\''+s.id+'\',1)">BUY 1</button>';
+    html += '<button class="stock-btn buy'+(canBuy && game.credits >= s.price*5?'':' disabled')+'" onclick="buyStock(\''+s.id+'\',5)">BUY 5</button>';
+    html += '<button class="stock-btn sell'+(canSell?'':' disabled')+'" onclick="sellStock(\''+s.id+'\',1)">SELL 1</button>';
+    if(s.shares >= 5) html += '<button class="stock-btn sell" onclick="sellStock(\''+s.id+'\',5)">SELL 5</button>';
+    if(s.shares > 0) html += '<button class="stock-btn sell" onclick="sellStock(\''+s.id+'\','+s.shares+')">SELL ALL</button>';
+    html += '</div></div>';
+  }
+  list.innerHTML = html;
+
+  // Draw mini charts
+  for(let s of game.stocks){
+    let cv = document.getElementById('chart-'+s.id);
+    if(!cv) continue;
+    let c = cv.getContext('2d');
+    let w = cv.width, h = cv.height;
+    c.clearRect(0,0,w,h);
+    let hist = s.history;
+    if(hist.length < 2) continue;
+    let min = Math.min(...hist), max = Math.max(...hist);
+    let range = max - min || 1;
+    // Draw line
+    c.beginPath();
+    for(let i=0;i<hist.length;i++){
+      let x = (i/(hist.length-1)) * w;
+      let y = h - ((hist[i]-min)/range) * (h-4) - 2;
+      if(i===0) c.moveTo(x,y); else c.lineTo(x,y);
+    }
+    c.strokeStyle = s.color;
+    c.lineWidth = 1.5;
+    c.stroke();
+    // Fill under
+    c.lineTo(w, h);
+    c.lineTo(0, h);
+    c.closePath();
+    if(s.color.startsWith('#')){
+      c.fillStyle = s.color + '14';
+    } else {
+      c.fillStyle = s.color.replace(')', ',0.08)').replace('rgb','rgba');
+    }
+    c.fill();
   }
 }
 
@@ -2993,8 +3243,20 @@ function updateHUD(){
   let pct = Math.min(100, (game.credits/maxCr)*100);
   document.getElementById('threshold-fill').style.width = pct+'%';
   document.getElementById('threshold-warn').style.display = game.credits < maxCr*0.15 ? 'block' : 'none';
+  if(game.credits < 500){
+    document.getElementById('credits-value').style.color = Date.now()%400<200 ? '#ff2d7b' : '#ff6a00';
+    document.getElementById('credits-value').style.textShadow = '0 0 20px rgba(255,45,123,0.6)';
+  } else {
+    document.getElementById('credits-value').style.color = '#39ff14';
+    document.getElementById('credits-value').style.textShadow = '0 0 15px rgba(57,255,20,0.4)';
+  }
   document.getElementById('enemies-left').textContent = 'HOSTILES: ' + game.enemiesRemaining;
   document.getElementById('score-display').textContent = 'SCORE: ' + game.score;
+  // Stock portfolio value
+  let portfolioValue = game.stocks.reduce((sum, s) => sum + s.shares * s.price, 0);
+  if(portfolioValue > 0){
+    document.getElementById('score-display').textContent = 'SCORE: ' + game.score + ' | STOCKS: ' + portfolioValue + ' CR';
+  }
   // next wave btn
   document.getElementById('next-wave-btn').classList.toggle('disabled', game.waveActive);
   // skill cooldowns
@@ -3005,6 +3267,12 @@ function updateHUD(){
   document.getElementById('skill1-btn')?.classList.toggle('on-cooldown', game.skill1CD > 0);
   document.getElementById('skill2-btn')?.classList.toggle('on-cooldown', game.skill2CD > 0);
   updateShopCosts();
+  // Update stock market button state
+  let smBtn = document.getElementById('stock-market-btn');
+  if(smBtn){
+    smBtn.style.borderColor = game.waveActive ? 'rgba(0,240,255,0.3)' : 'var(--neon-cyan)';
+    smBtn.style.opacity = game.waveActive ? '0.5' : '1';
+  }
 }
 
 // ---- UPGRADE SCREEN ----
@@ -3149,6 +3417,7 @@ document.addEventListener('keydown', e=>{
   }
   if(key==='q') activateSkill(1);
   if(key==='w') activateSkill(2);
+  if(key === 'm') toggleStockMarket();
   if(key==='escape'){
     game.selectedTurret = null;
     game.skillTargeting = null;
