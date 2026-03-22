@@ -1320,18 +1320,28 @@ function drawVFX(){
         // Satellite in orbit fires beam down to target
         let beamWidth = 60 * (1 - p*0.7);
         let beamAlpha = Math.max(0, 1 - p*1.5);
-        // Draw satellite at top of screen
+        // Draw main satellite at top of screen
         let satX = v.x + Math.sin(p*4)*15;
         let satY = 25;
         let satA = p < 0.1 ? p*10 : Math.max(0, 1-p*1.2);
+        // Charging animation - panels glow brighter before firing
+        let chargePhase = p < 0.15 ? p/0.15 : 1;
+        let panelGlow = 0.9 + 0.1 * Math.sin(now/50) * chargePhase;
         ctx.save(); ctx.translate(satX, satY);
-        // Solar panels (left)
-        ctx.fillStyle = 'rgba(30,80,180,'+satA*0.9+')';
+        // Solar panels (left) with charging glow
+        ctx.fillStyle = 'rgba(30,80,180,'+satA*panelGlow+')';
         ctx.fillRect(-28,-4,14,8);
-        ctx.strokeStyle = 'rgba(0,200,255,'+satA*0.6+')'; ctx.lineWidth=0.5;
+        ctx.strokeStyle = 'rgba(0,200,255,'+satA*(0.6+chargePhase*0.4)+')'; ctx.lineWidth=0.5;
         ctx.strokeRect(-28,-4,14,8);
         for(let i=0;i<3;i++){ ctx.beginPath(); ctx.moveTo(-28+i*4.7,-4); ctx.lineTo(-28+i*4.7,4); ctx.stroke(); }
+        // Charging panel highlight
+        if(p < 0.15){
+          ctx.fillStyle = 'rgba(0,240,255,'+(0.3*chargePhase*Math.abs(Math.sin(now/30)))+')';
+          ctx.fillRect(-28,-4,14,8);
+          ctx.fillRect(14,-4,14,8);
+        }
         // Solar panels (right)
+        ctx.fillStyle = 'rgba(30,80,180,'+satA*panelGlow+')';
         ctx.fillRect(14,-4,14,8);
         ctx.strokeRect(14,-4,14,8);
         for(let i=0;i<3;i++){ ctx.beginPath(); ctx.moveTo(14+i*4.7,-4); ctx.lineTo(14+i*4.7,4); ctx.stroke(); }
@@ -1350,7 +1360,51 @@ function drawVFX(){
         sg.addColorStop(1,'transparent');
         ctx.fillStyle = sg; ctx.beginPath(); ctx.arc(0,5,glowR,0,Math.PI*2); ctx.fill();
         ctx.restore();
-        // Vertical beam from satellite to target
+
+        // --- Backup Satellite (smaller, offset to the side, fires delayed) ---
+        let sat2X = v.x + 70 + Math.sin(p*4+1.5)*10;
+        let sat2Y = 18;
+        let sat2Delay = 0.12;
+        let sat2P = Math.max(0, p - sat2Delay);
+        let sat2A = sat2P < 0.01 ? 0 : (sat2P < 0.1 ? sat2P*10 : Math.max(0, 1-sat2P*1.3));
+        let beam2Alpha = Math.max(0, 1 - sat2P*1.8);
+        ctx.save(); ctx.translate(sat2X, sat2Y);
+        ctx.fillStyle = 'rgba(30,80,180,'+sat2A*0.8+')';
+        ctx.fillRect(-18,-3,9,6); ctx.fillRect(9,-3,9,6);
+        ctx.strokeStyle = 'rgba(0,200,255,'+sat2A*0.5+')'; ctx.lineWidth=0.4;
+        ctx.strokeRect(-18,-3,9,6); ctx.strokeRect(9,-3,9,6);
+        if(p > sat2Delay*0.5 && p < sat2Delay){
+          let chg2 = (p - sat2Delay*0.5)/(sat2Delay*0.5);
+          ctx.fillStyle = 'rgba(0,240,255,'+(0.3*chg2*Math.abs(Math.sin(now/25)))+')';
+          ctx.fillRect(-18,-3,9,6); ctx.fillRect(9,-3,9,6);
+        }
+        ctx.fillStyle = 'rgba(170,180,190,'+sat2A+')';
+        ctx.fillRect(-5,-4,10,8);
+        ctx.strokeStyle = 'rgba(0,240,255,'+sat2A*0.6+')'; ctx.lineWidth=0.6;
+        ctx.strokeRect(-5,-4,10,8);
+        ctx.beginPath(); ctx.arc(0,5,3, 0, Math.PI); ctx.strokeStyle='rgba(200,220,240,'+sat2A+')'; ctx.lineWidth=0.8; ctx.stroke();
+        let glowR2 = 4+Math.sin(now/70)*1.5;
+        let sg2 = ctx.createRadialGradient(0,4,0,0,4,glowR2);
+        sg2.addColorStop(0,'rgba(0,240,255,'+sat2A*0.5+')');
+        sg2.addColorStop(1,'transparent');
+        ctx.fillStyle = sg2; ctx.beginPath(); ctx.arc(0,4,glowR2,0,Math.PI*2); ctx.fill();
+        ctx.restore();
+        // Secondary beam from backup satellite (thinner)
+        if(p > sat2Delay){
+          let grd2 = ctx.createLinearGradient(sat2X, sat2Y+8, v.x, v.y);
+          grd2.addColorStop(0, 'rgba(0,200,255,'+beam2Alpha*0.3+')');
+          grd2.addColorStop(0.5, 'rgba(0,220,255,'+beam2Alpha*0.5+')');
+          grd2.addColorStop(1, 'rgba(180,240,255,'+beam2Alpha*0.7+')');
+          ctx.fillStyle = grd2;
+          ctx.beginPath();
+          ctx.moveTo(sat2X - 4, sat2Y+8);
+          ctx.lineTo(sat2X + 4, sat2Y+8);
+          ctx.lineTo(v.x + beamWidth*0.12, v.y);
+          ctx.lineTo(v.x - beamWidth*0.12, v.y);
+          ctx.closePath(); ctx.fill();
+        }
+
+        // Vertical beam from main satellite to target
         let grd = ctx.createLinearGradient(v.x, satY+12, v.x, v.y);
         grd.addColorStop(0, 'rgba(0,240,255,'+beamAlpha*0.5+')');
         grd.addColorStop(0.3, 'rgba(0,240,255,'+beamAlpha*0.3+')');
@@ -1363,6 +1417,40 @@ function drawVFX(){
         ctx.lineTo(v.x + beamWidth*0.3, v.y);
         ctx.lineTo(v.x - beamWidth*0.3, v.y);
         ctx.closePath(); ctx.fill();
+
+        // Energy crackling along the main beam (lightning zigzags)
+        if(beamAlpha > 0.05){
+          ctx.strokeStyle = 'rgba(150,220,255,'+beamAlpha*0.6+')';
+          ctx.lineWidth = 1;
+          for(let bolt=0; bolt<3; bolt++){
+            ctx.beginPath();
+            let bx = satX + (Math.random()-0.5)*10;
+            ctx.moveTo(bx, satY+15);
+            let segments = 12;
+            for(let s=1; s<=segments; s++){
+              let frac = s/segments;
+              let tx = satX + (v.x - satX)*frac;
+              let ty = satY+15 + (v.y - satY-15)*frac;
+              let jitter = (Math.sin(now/30 + s*7 + bolt*13) + Math.random()-0.5) * 12;
+              ctx.lineTo(tx + jitter, ty);
+            }
+            ctx.stroke();
+          }
+        }
+
+        // Electromagnetic interference - random static dots around the beam
+        if(beamAlpha > 0.1){
+          for(let d=0; d<20; d++){
+            let dy = satY + 20 + Math.random()*(v.y - satY - 30);
+            let beamCenterX = satX + (v.x - satX)*((dy-satY)/(v.y-satY));
+            let dx = beamCenterX + (Math.random()-0.5)*50;
+            let ds = 1 + Math.random()*2;
+            let da = beamAlpha * (0.2 + Math.random()*0.4);
+            ctx.fillStyle = 'rgba(0,240,255,'+da+')';
+            ctx.fillRect(dx, dy, ds, ds);
+          }
+        }
+
         // Impact rings
         if(p < 0.8){
           for(let i=0;i<3;i++){
@@ -1380,6 +1468,30 @@ function drawVFX(){
           fg.addColorStop(1,'transparent');
           ctx.fillStyle = fg;
           ctx.beginPath(); ctx.arc(v.x,v.y,flashR,0,Math.PI*2); ctx.fill();
+        }
+
+        // Ground crater at impact (dark circle)
+        if(p > 0.1){
+          let craterA = Math.min(0.5, (p-0.1)*2) * Math.max(0, 1-p*0.8);
+          let craterR = (v.radius||80)*0.4 * Math.min(1, (p-0.1)*5);
+          ctx.beginPath(); ctx.arc(v.x, v.y, craterR, 0, Math.PI*2);
+          ctx.fillStyle = 'rgba(20,15,10,'+craterA+')'; ctx.fill();
+          ctx.strokeStyle = 'rgba(40,30,20,'+craterA*0.6+')'; ctx.lineWidth=2; ctx.stroke();
+        }
+
+        // Debris/sparks thrown upward from impact point
+        if(p > 0.05 && p < 0.6){
+          let debrisP = (p-0.05)/0.55;
+          for(let d=0; d<10; d++){
+            let angle = Math.PI*2/10*d + d*0.7;
+            let speed = 40 + d*12;
+            let dx = v.x + Math.cos(angle)*speed*debrisP;
+            let dy = v.y + Math.sin(angle)*speed*debrisP - 60*debrisP*(1-debrisP);
+            let da = Math.max(0, 1 - debrisP*1.8);
+            let sz = 1 + Math.random()*2;
+            ctx.fillStyle = 'rgba(255,200,100,'+da+')';
+            ctx.fillRect(dx, dy, sz, sz);
+          }
         }
       } break;
 
@@ -1535,224 +1647,505 @@ function drawVFX(){
       } break;
 
       case 'airstrike_line': {
-        // Fighter jet flies along the bomb line dropping bombs
+        // V-formation of 3 fighter jets flying along the bomb line dropping carpet bombs
         let a = p < 0.1 ? p*10 : Math.max(0, 1-p*1.1);
         let dx = v.ex - v.sx, dy = v.ey - v.sy;
         let lineLen = Math.sqrt(dx*dx+dy*dy)||1;
         let lineAngle = Math.atan2(dy, dx);
+        let perpX = -Math.sin(lineAngle), perpY = Math.cos(lineAngle);
         // Jet position along the line
-        let jetP = Math.min(1, p*1.8); // jet moves faster than effect fades
-        let jetX = v.sx + dx*jetP;
-        let jetY = v.sy + dy*jetP;
-        // Draw the jet
-        if(jetP < 1){
-          ctx.save(); ctx.translate(jetX, jetY); ctx.rotate(lineAngle);
-          // Engine afterburner
-          let abLen = 12+Math.sin(now/40)*4;
+        let jetP = Math.min(1, p*1.8);
+        let leadX = v.sx + dx*jetP;
+        let leadY = v.sy + dy*jetP;
+
+        // Helper: draw a single fighter jet at origin (facing right), with afterburner flicker
+        function drawJet(cx, cy, angle, bankAngle, alpha, flicker) {
+          ctx.save(); ctx.translate(cx, cy); ctx.rotate(angle);
+          // Afterburner glow with flickering
+          let abLen = 12 + Math.sin(now/40 + flicker)*4 + Math.sin(now/17 + flicker*3)*2;
           let abGrd = ctx.createLinearGradient(-18,0,-18-abLen,0);
-          abGrd.addColorStop(0,'rgba(255,200,50,'+a*0.8+')');
-          abGrd.addColorStop(0.5,'rgba(255,100,0,'+a*0.4+')');
+          abGrd.addColorStop(0,'rgba(255,220,80,'+alpha*0.9+')');
+          abGrd.addColorStop(0.3,'rgba(255,160,30,'+alpha*0.6+')');
+          abGrd.addColorStop(0.6,'rgba(255,80,0,'+alpha*0.3+')');
           abGrd.addColorStop(1,'transparent');
           ctx.fillStyle = abGrd;
           ctx.beginPath(); ctx.moveTo(-18,-3); ctx.lineTo(-18-abLen,0); ctx.lineTo(-18,3); ctx.fill();
+          // Outer afterburner halo
+          let haloR = 4 + Math.sin(now/25 + flicker*2)*1.5;
+          let haloGrd = ctx.createRadialGradient(-20,0,0,-20,0,haloR);
+          haloGrd.addColorStop(0,'rgba(255,255,200,'+alpha*0.5+')');
+          haloGrd.addColorStop(1,'transparent');
+          ctx.fillStyle = haloGrd;
+          ctx.beginPath(); ctx.arc(-20,0,haloR,0,Math.PI*2); ctx.fill();
           // Fuselage
           ctx.beginPath();
           ctx.moveTo(18,0); ctx.lineTo(8,-4); ctx.lineTo(-6,-3.5);
           ctx.lineTo(-16,-2); ctx.lineTo(-18,0); ctx.lineTo(-16,2);
           ctx.lineTo(-6,3.5); ctx.lineTo(8,4); ctx.closePath();
-          ctx.fillStyle = 'rgba(60,50,40,'+a+')'; ctx.fill();
-          ctx.strokeStyle = 'rgba(255,106,0,'+a*0.8+')'; ctx.lineWidth = 0.8; ctx.stroke();
-          // Wings (swept back)
+          ctx.fillStyle = 'rgba(60,50,40,'+alpha+')'; ctx.fill();
+          ctx.strokeStyle = 'rgba(255,106,0,'+alpha*0.8+')'; ctx.lineWidth = 0.8; ctx.stroke();
+          // Wings (swept back) with bank
+          let wingTopLen = 16 + bankAngle*3;
+          let wingBotLen = 16 - bankAngle*3;
           ctx.beginPath();
-          ctx.moveTo(2,-4); ctx.lineTo(-6,-16); ctx.lineTo(-10,-15); ctx.lineTo(-6,-4);
+          ctx.moveTo(2,-4); ctx.lineTo(-6,-wingTopLen); ctx.lineTo(-10,-wingTopLen+1); ctx.lineTo(-6,-4);
           ctx.closePath();
-          ctx.fillStyle = 'rgba(50,40,30,'+a+')'; ctx.fill();
-          ctx.strokeStyle = 'rgba(255,106,0,'+a*0.5+')'; ctx.lineWidth = 0.6; ctx.stroke();
+          ctx.fillStyle = 'rgba(50,40,30,'+alpha+')'; ctx.fill();
+          ctx.strokeStyle = 'rgba(255,106,0,'+alpha*0.5+')'; ctx.lineWidth = 0.6; ctx.stroke();
           ctx.beginPath();
-          ctx.moveTo(2,4); ctx.lineTo(-6,16); ctx.lineTo(-10,15); ctx.lineTo(-6,4);
+          ctx.moveTo(2,4); ctx.lineTo(-6,wingBotLen); ctx.lineTo(-10,wingBotLen-1); ctx.lineTo(-6,4);
           ctx.closePath();
-          ctx.fillStyle = 'rgba(50,40,30,'+a+')'; ctx.fill();
+          ctx.fillStyle = 'rgba(50,40,30,'+alpha+')'; ctx.fill();
           ctx.stroke();
           // Tail fin
           ctx.beginPath();
           ctx.moveTo(-14,-2); ctx.lineTo(-18,-8); ctx.lineTo(-20,-7); ctx.lineTo(-16,-2);
           ctx.closePath();
-          ctx.fillStyle = 'rgba(50,40,30,'+a+')'; ctx.fill();
+          ctx.fillStyle = 'rgba(50,40,30,'+alpha+')'; ctx.fill();
           // Cockpit
           ctx.beginPath(); ctx.ellipse(10,0,4,2,0,0,Math.PI*2);
-          ctx.fillStyle = 'rgba(255,220,150,'+a*0.5+')'; ctx.fill();
+          ctx.fillStyle = 'rgba(255,220,150,'+alpha*0.5+')'; ctx.fill();
           ctx.restore();
         }
-        // Trail of explosions behind the jet
-        let numBombs = 10;
+
+        // V-formation offsets: lead (0,0), left wingman (-25, -20), right wingman (-25, +20)
+        let formation = [
+          {ox:0, oy:0, bank:0, flicker:0},           // lead
+          {ox:-25, oy:-22, bank:-1.5, flicker:1.7},   // left wingman (bank outward)
+          {ox:-25, oy:22, bank:1.5, flicker:3.4}      // right wingman (bank outward)
+        ];
+
+        // Draw each jet and its individual contrail
+        if(jetP < 1){
+          for(let f of formation){
+            // Transform offset from line-local to world coordinates
+            let jx = leadX + Math.cos(lineAngle)*f.ox + perpX*f.oy;
+            let jy = leadY + Math.sin(lineAngle)*f.ox + perpY*f.oy;
+            // Contrail from start position to current jet position
+            let trailSx = v.sx + Math.cos(lineAngle)*f.ox + perpX*f.oy;
+            let trailSy = v.sy + Math.sin(lineAngle)*f.ox + perpY*f.oy;
+            // Draw vapor trail per jet
+            ctx.beginPath();
+            ctx.moveTo(trailSx, trailSy); ctx.lineTo(jx, jy);
+            ctx.strokeStyle = 'rgba(200,200,200,'+a*0.12+')'; ctx.lineWidth = 5; ctx.stroke();
+            ctx.strokeStyle = 'rgba(255,255,255,'+a*0.06+')'; ctx.lineWidth = 11; ctx.stroke();
+            // Draw the jet
+            drawJet(jx, jy, lineAngle, f.bank, a, f.flicker);
+
+            // Flares ejected from each jet (small bright dots arcing away)
+            let flareCount = 3;
+            for(let fi=0; fi<flareCount; fi++){
+              let flareT = (p*4 + f.flicker + fi*0.35) % 1;
+              if(flareT < 0.6){
+                let fAlpha = a * (1 - flareT/0.6) * 0.9;
+                let fDist = flareT * 30;
+                let fAngleOff = (fi - 1) * 0.8 + f.bank * 0.3;
+                let fx = jx - Math.cos(lineAngle)*8 + perpX*fAngleOff*fDist + Math.sin(now/60+fi+f.flicker)*3;
+                let fy = jy - Math.sin(lineAngle)*8 + perpY*fAngleOff*fDist + Math.cos(now/60+fi+f.flicker)*3;
+                // Bright flare core
+                let flGrd = ctx.createRadialGradient(fx,fy,0,fx,fy,3+flareT*4);
+                flGrd.addColorStop(0,'rgba(255,255,220,'+fAlpha+')');
+                flGrd.addColorStop(0.4,'rgba(255,200,100,'+fAlpha*0.6+')');
+                flGrd.addColorStop(1,'transparent');
+                ctx.fillStyle = flGrd;
+                ctx.beginPath(); ctx.arc(fx,fy,3+flareT*4,0,Math.PI*2); ctx.fill();
+              }
+            }
+          }
+        }
+
+        // Carpet bombing: 15 bombs spread wider across formation width
+        let numBombs = 15;
+        let bombSpread = 18; // perpendicular spread
         for(let i=0;i<numBombs;i++){
           let bp = i/numBombs;
           if(jetP > bp){
             let bombAge = (jetP-bp)*1.5;
-            let ba = Math.max(0, a*(1-bombAge));
-            let bx = v.sx + dx*bp, by = v.sy + dy*bp;
-            let br = 15 + bombAge*50;
+            let ba = Math.max(0, a*(1-bombAge*0.8));
+            // Spread bombs across the formation width
+            let spreadOff = ((i % 3) - 1) * bombSpread + Math.sin(i*7.3)*6;
+            let bx = v.sx + dx*bp + perpX*spreadOff;
+            let by = v.sy + dy*bp + perpY*spreadOff;
+            let br = 20 + bombAge*60;
+
+            // Main explosion - bigger and more dramatic
             let bg = ctx.createRadialGradient(bx,by,0,bx,by,br);
-            bg.addColorStop(0,'rgba(255,200,80,'+ba*0.7+')');
-            bg.addColorStop(0.3,'rgba(255,100,0,'+ba*0.5+')');
-            bg.addColorStop(0.7,'rgba(200,50,0,'+ba*0.2+')');
+            bg.addColorStop(0,'rgba(255,255,200,'+ba*0.9+')');
+            bg.addColorStop(0.15,'rgba(255,200,80,'+ba*0.8+')');
+            bg.addColorStop(0.4,'rgba(255,100,0,'+ba*0.5+')');
+            bg.addColorStop(0.7,'rgba(180,40,0,'+ba*0.25+')');
             bg.addColorStop(1,'transparent');
             ctx.fillStyle = bg;
             ctx.beginPath(); ctx.arc(bx,by,br,0,Math.PI*2); ctx.fill();
-            // Smoke ring
+
+            // Shockwave ring expanding from bomb hit
+            let shockR = br * 1.6 + bombAge * 20;
+            let shockA = ba * (1 - bombAge*0.5) * 0.4;
+            if(shockA > 0){
+              ctx.beginPath(); ctx.arc(bx,by,shockR,0,Math.PI*2);
+              ctx.strokeStyle = 'rgba(255,200,150,'+shockA+')'; ctx.lineWidth = 2.5; ctx.stroke();
+              // Outer shockwave
+              ctx.beginPath(); ctx.arc(bx,by,shockR*1.3,0,Math.PI*2);
+              ctx.strokeStyle = 'rgba(255,180,120,'+shockA*0.4+')'; ctx.lineWidth = 1.5; ctx.stroke();
+            }
+
+            // Secondary detonation (delayed mini-explosion near main)
+            if(bombAge > 0.3 && bombAge < 1.2){
+              let secAge = bombAge - 0.3;
+              let secA = ba * Math.max(0, 1 - secAge*1.5) * 0.7;
+              let secOx = Math.sin(i*13.7)*12;
+              let secOy = Math.cos(i*9.3)*10;
+              let secR = 8 + secAge*30;
+              let sg = ctx.createRadialGradient(bx+secOx,by+secOy,0,bx+secOx,by+secOy,secR);
+              sg.addColorStop(0,'rgba(255,220,100,'+secA+')');
+              sg.addColorStop(0.5,'rgba(255,120,20,'+secA*0.5+')');
+              sg.addColorStop(1,'transparent');
+              ctx.fillStyle = sg;
+              ctx.beginPath(); ctx.arc(bx+secOx,by+secOy,secR,0,Math.PI*2); ctx.fill();
+            }
+
+            // Ground-level dust cloud kicked up by explosion
+            if(bombAge > 0.1){
+              let dustAge = bombAge - 0.1;
+              let dustA = ba * Math.max(0, 1 - dustAge*0.6) * 0.35;
+              let dustR = br*1.2 + dustAge*40;
+              let dg = ctx.createRadialGradient(bx,by,dustR*0.3,bx,by,dustR);
+              dg.addColorStop(0,'rgba(140,120,90,'+dustA*0.5+')');
+              dg.addColorStop(0.5,'rgba(120,100,70,'+dustA*0.3+')');
+              dg.addColorStop(1,'transparent');
+              ctx.fillStyle = dg;
+              ctx.beginPath(); ctx.arc(bx,by,dustR,0,Math.PI*2); ctx.fill();
+              // Dust wisps
+              for(let d=0;d<3;d++){
+                let wx = bx + Math.cos(d*2.1+i)*dustR*0.7;
+                let wy = by + Math.sin(d*2.1+i)*dustR*0.5;
+                let wr = 5+dustAge*15;
+                ctx.beginPath(); ctx.arc(wx,wy,wr,0,Math.PI*2);
+                ctx.fillStyle = 'rgba(110,95,70,'+dustA*0.3+')'; ctx.fill();
+              }
+            }
+
+            // Smoke ring (enhanced)
             ctx.beginPath(); ctx.arc(bx,by,br*1.3,0,Math.PI*2);
-            ctx.strokeStyle = 'rgba(100,80,60,'+ba*0.3+')'; ctx.lineWidth = 2; ctx.stroke();
+            ctx.strokeStyle = 'rgba(80,60,40,'+ba*0.35+')'; ctx.lineWidth = 3; ctx.stroke();
           }
-        }
-        // Vapor trail behind jet
-        if(jetP < 1){
-          ctx.beginPath();
-          ctx.moveTo(v.sx, v.sy); ctx.lineTo(jetX, jetY);
-          ctx.strokeStyle = 'rgba(200,200,200,'+a*0.15+')'; ctx.lineWidth = 6; ctx.stroke();
-          ctx.strokeStyle = 'rgba(255,255,255,'+a*0.08+')'; ctx.lineWidth = 12; ctx.stroke();
         }
       } break;
 
       case 'artillery_shell': {
         // Artillery cannon at bottom-right fires shell in an arc
         let a = p < 0.5 ? 1 : Math.max(0,(1-p)*2);
-        // Draw artillery cannon at bottom edge
-        let cannonX = game.mapW - 60, cannonY = game.mapH - 20;
-        let aimAngle = Math.atan2(v.y - cannonY, v.x - cannonX);
-        let cannonA = p < 0.6 ? 1 : Math.max(0,(1-p)*2.5);
-        ctx.save(); ctx.translate(cannonX, cannonY); ctx.rotate(aimAngle);
-        // Barrel
-        ctx.fillStyle = 'rgba(80,90,80,'+cannonA+')';
-        ctx.fillRect(0,-3,30,6);
-        ctx.strokeStyle = 'rgba(120,130,100,'+cannonA+')'; ctx.lineWidth=0.8; ctx.strokeRect(0,-3,30,6);
-        // Muzzle brake
-        ctx.fillStyle = 'rgba(60,60,50,'+cannonA+')';
-        ctx.fillRect(28,-5,5,10);
-        // Muzzle flash (during firing)
-        if(p < 0.15){
-          let mfA = (0.15-p)*6.6;
-          let mfR = 12+Math.random()*5;
-          let mfg = ctx.createRadialGradient(33,0,0,33,0,mfR);
-          mfg.addColorStop(0,'rgba(255,240,150,'+mfA+')');
-          mfg.addColorStop(0.5,'rgba(255,150,50,'+mfA*0.5+')');
-          mfg.addColorStop(1,'transparent');
-          ctx.fillStyle = mfg; ctx.beginPath(); ctx.arc(33,0,mfR,0,Math.PI*2); ctx.fill();
+
+        // --- Helper to draw a cannon at given position ---
+        function drawArtilleryCannon(cx, cy, targetX, targetY, cAlpha, progress) {
+          let aim = Math.atan2(targetY - cy, targetX - cx);
+          ctx.save(); ctx.translate(cx, cy); ctx.rotate(aim);
+          ctx.fillStyle = 'rgba(80,90,80,'+cAlpha+')';
+          ctx.fillRect(0,-3,30,6);
+          ctx.strokeStyle = 'rgba(120,130,100,'+cAlpha+')'; ctx.lineWidth=0.8; ctx.strokeRect(0,-3,30,6);
+          ctx.fillStyle = 'rgba(60,60,50,'+cAlpha+')';
+          ctx.fillRect(28,-5,5,10);
+          // Muzzle flash
+          if(progress < 0.15){
+            let mfA = (0.15-progress)*6.6;
+            let mfR = 12+Math.random()*5;
+            let mfg = ctx.createRadialGradient(33,0,0,33,0,mfR);
+            mfg.addColorStop(0,'rgba(255,240,150,'+mfA+')');
+            mfg.addColorStop(0.5,'rgba(255,150,50,'+mfA*0.5+')');
+            mfg.addColorStop(1,'transparent');
+            ctx.fillStyle = mfg; ctx.beginPath(); ctx.arc(33,0,mfR,0,Math.PI*2); ctx.fill();
+          }
+          // Smoke cloud at cannon after firing (dissipating puff)
+          if(progress > 0.05 && progress < 0.4){
+            let smokeP = (progress-0.05)/0.35;
+            let smokeA = cAlpha * Math.max(0, 1 - smokeP*2) * 0.4;
+            for(let s=0; s<5; s++){
+              let sr = 6 + smokeP*15 + s*3;
+              let sx = 30 + smokeP*10 + Math.sin(s*2.3)*8;
+              let sy = (Math.cos(s*1.7)-0.5)*10 - smokeP*12;
+              ctx.beginPath(); ctx.arc(sx, sy, sr, 0, Math.PI*2);
+              ctx.fillStyle = 'rgba(140,135,125,'+smokeA+')'; ctx.fill();
+            }
+          }
+          ctx.restore();
+          // Wheels
+          ctx.beginPath(); ctx.arc(cx-5, cy+3, 6, 0, Math.PI*2);
+          ctx.fillStyle = 'rgba(50,50,40,'+cAlpha+')'; ctx.fill();
+          ctx.strokeStyle = 'rgba(80,80,70,'+cAlpha+')'; ctx.lineWidth=1; ctx.stroke();
+          ctx.beginPath(); ctx.arc(cx+8, cy+3, 6, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+          ctx.fillStyle = 'rgba(70,75,65,'+cAlpha+')';
+          ctx.fillRect(cx-12, cy, 24, 5);
         }
-        ctx.restore();
-        // Wheels
-        ctx.beginPath(); ctx.arc(cannonX-5, cannonY+3, 6, 0, Math.PI*2);
-        ctx.fillStyle = 'rgba(50,50,40,'+cannonA+')'; ctx.fill();
-        ctx.strokeStyle = 'rgba(80,80,70,'+cannonA+')'; ctx.lineWidth=1; ctx.stroke();
-        ctx.beginPath(); ctx.arc(cannonX+8, cannonY+3, 6, 0, Math.PI*2);
-        ctx.fill(); ctx.stroke();
-        // Base platform
-        ctx.fillStyle = 'rgba(70,75,65,'+cannonA+')';
-        ctx.fillRect(cannonX-12, cannonY, 24, 5);
-        // Shell arcing through the air
+
+        // --- Draw Cannon 1 (right side) ---
+        let cannonX = game.mapW - 60, cannonY = game.mapH - 20;
+        let cannonA = p < 0.6 ? 1 : Math.max(0,(1-p)*2.5);
+        drawArtilleryCannon(cannonX, cannonY, v.x, v.y, cannonA, p);
+
+        // --- Draw Cannon 2 (left side, fires delayed) ---
+        let cannon2X = 60, cannon2Y = game.mapH - 20;
+        let c2Delay = 0.15;
+        let c2P = Math.max(0, p - c2Delay);
+        let cannon2A = c2P < 0.01 ? 0 : (c2P < 0.6 ? 1 : Math.max(0,(1-c2P)*2.5));
+        if(p > c2Delay * 0.5){
+          drawArtilleryCannon(cannon2X, cannon2Y, v.x, v.y, cannon2A, c2P);
+        }
+
+        // --- Shell from Cannon 1 arcing through the air ---
         if(p < 0.5){
-          let shellP = p*2; // 0->1 during flight
+          let shellP = p*2;
           let sx = cannonX + (v.x-cannonX)*shellP;
           let sy = cannonY + (v.y-cannonY)*shellP - 120*Math.sin(shellP*Math.PI);
           let shellAngle = Math.atan2((v.y-cannonY)-120*Math.cos(shellP*Math.PI)*Math.PI, v.x-cannonX);
           ctx.save(); ctx.translate(sx,sy); ctx.rotate(shellAngle);
-          // Shell body
           ctx.fillStyle = 'rgba(200,180,100,'+a+')';
           ctx.beginPath(); ctx.moveTo(6,0); ctx.lineTo(-4,-2.5); ctx.lineTo(-4,2.5); ctx.closePath(); ctx.fill();
-          // Tracer trail
           ctx.beginPath(); ctx.moveTo(-4,0); ctx.lineTo(-12,0);
           ctx.strokeStyle = 'rgba(255,200,50,'+a*0.6+')'; ctx.lineWidth=2; ctx.stroke();
           ctx.restore();
+          // Shell whistling trail (dashed arc showing trajectory)
+          ctx.save();
+          ctx.setLineDash([6, 4]);
+          ctx.beginPath(); ctx.moveTo(cannonX, cannonY);
+          let midX = (cannonX+sx)/2, midY = Math.min(cannonY, sy) - 60;
+          ctx.quadraticCurveTo(midX, midY, sx, sy);
+          ctx.strokeStyle = 'rgba(200,180,120,'+a*0.25+')'; ctx.lineWidth=1.5; ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.restore();
         }
-        // Explosion on impact
+
+        // --- Shell from Cannon 2 (delayed) ---
+        if(c2P > 0 && c2P < 0.5){
+          let shell2P = c2P*2;
+          let sx2 = cannon2X + (v.x-cannon2X)*shell2P;
+          let sy2 = cannon2Y + (v.y-cannon2Y)*shell2P - 120*Math.sin(shell2P*Math.PI);
+          let shell2Angle = Math.atan2((v.y-cannon2Y)-120*Math.cos(shell2P*Math.PI)*Math.PI, v.x-cannon2X);
+          ctx.save(); ctx.translate(sx2,sy2); ctx.rotate(shell2Angle);
+          ctx.fillStyle = 'rgba(200,180,100,'+cannon2A+')';
+          ctx.beginPath(); ctx.moveTo(6,0); ctx.lineTo(-4,-2.5); ctx.lineTo(-4,2.5); ctx.closePath(); ctx.fill();
+          ctx.beginPath(); ctx.moveTo(-4,0); ctx.lineTo(-12,0);
+          ctx.strokeStyle = 'rgba(255,200,50,'+cannon2A*0.6+')'; ctx.lineWidth=2; ctx.stroke();
+          ctx.restore();
+          // Dashed trail for cannon 2 shell
+          ctx.save();
+          ctx.setLineDash([6, 4]);
+          ctx.beginPath(); ctx.moveTo(cannon2X, cannon2Y);
+          let midX2 = (cannon2X+sx2)/2, midY2 = Math.min(cannon2Y, sy2) - 60;
+          ctx.quadraticCurveTo(midX2, midY2, sx2, sy2);
+          ctx.strokeStyle = 'rgba(200,180,120,'+cannon2A*0.25+')'; ctx.lineWidth=1.5; ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.restore();
+        }
+
+        // --- Bigger explosion on impact with shrapnel ---
         if(p > 0.4){
           let ep = (p-0.4)/0.6;
-          let er = 15 + ep*50;
-          let ea = Math.max(0, 1-ep*1.5);
+          let er = 20 + ep*65;
+          let ea = Math.max(0, 1-ep*1.3);
           let eg = ctx.createRadialGradient(v.x,v.y,0,v.x,v.y,er);
-          eg.addColorStop(0,'rgba(255,200,50,'+ea+')');
-          eg.addColorStop(0.4,'rgba(255,100,0,'+ea*0.7+')');
+          eg.addColorStop(0,'rgba(255,255,200,'+ea+')');
+          eg.addColorStop(0.3,'rgba(255,200,50,'+ea*0.9+')');
+          eg.addColorStop(0.6,'rgba(255,100,0,'+ea*0.6+')');
           eg.addColorStop(1,'transparent');
           ctx.fillStyle = eg;
           ctx.beginPath(); ctx.arc(v.x,v.y,er,0,Math.PI*2); ctx.fill();
           // Dirt/debris ring
           ctx.beginPath(); ctx.arc(v.x,v.y,er*1.2,0,Math.PI*2);
           ctx.strokeStyle='rgba(139,119,101,'+ea*0.4+')'; ctx.lineWidth=3; ctx.stroke();
+          // Shrapnel pieces flying outward
+          for(let sh=0; sh<12; sh++){
+            let shAngle = Math.PI*2/12*sh + sh*0.5;
+            let shDist = er*0.6 + ep*50;
+            let shx = v.x + Math.cos(shAngle)*shDist;
+            let shy = v.y + Math.sin(shAngle)*shDist - 30*ep*(1-ep);
+            let shA = ea * 0.8;
+            let shSize = 2 + Math.random()*2;
+            ctx.save(); ctx.translate(shx, shy); ctx.rotate(shAngle + ep*4);
+            ctx.fillStyle = 'rgba(80,70,50,'+shA+')';
+            ctx.fillRect(-shSize/2, -shSize/2, shSize, shSize);
+            ctx.restore();
+          }
+        }
+
+        // Second explosion from cannon 2 shell (slightly delayed)
+        if(c2P > 0.4){
+          let ep2 = (c2P-0.4)/0.6;
+          let er2 = 15 + ep2*55;
+          let ea2 = Math.max(0, 1-ep2*1.4);
+          let eg2 = ctx.createRadialGradient(v.x,v.y,0,v.x,v.y,er2);
+          eg2.addColorStop(0,'rgba(255,240,180,'+ea2*0.7+')');
+          eg2.addColorStop(0.5,'rgba(255,120,0,'+ea2*0.5+')');
+          eg2.addColorStop(1,'transparent');
+          ctx.fillStyle = eg2;
+          ctx.beginPath(); ctx.arc(v.x,v.y,er2,0,Math.PI*2); ctx.fill();
+        }
+
+        // Ground cratering effect (dark scorched circle after explosion)
+        if(p > 0.5){
+          let crP = (p-0.5)/0.5;
+          let crR = 18 + crP*12;
+          let crA = Math.min(0.45, crP*0.6);
+          ctx.beginPath(); ctx.arc(v.x, v.y, crR, 0, Math.PI*2);
+          ctx.fillStyle = 'rgba(30,25,15,'+crA+')'; ctx.fill();
+          ctx.strokeStyle = 'rgba(60,50,30,'+crA*0.5+')'; ctx.lineWidth=2; ctx.stroke();
+        }
+
+        // Dust cloud expanding on impact
+        if(p > 0.4 && p < 0.85){
+          let dustP = (p-0.4)/0.45;
+          let dustA = Math.max(0, 1 - dustP*1.5) * 0.35;
+          let dustR = 25 + dustP*70;
+          for(let d=0; d<8; d++){
+            let dAngle = Math.PI*2/8*d + d*0.3;
+            let dr = dustR + Math.sin(d*1.5)*10;
+            let dx = v.x + Math.cos(dAngle)*dr;
+            let dy = v.y + Math.sin(dAngle)*dr*0.5;
+            let dSize = 8 + dustP*12;
+            ctx.beginPath(); ctx.arc(dx, dy, dSize, 0, Math.PI*2);
+            ctx.fillStyle = 'rgba(160,140,110,'+dustA+')'; ctx.fill();
+          }
         }
       } break;
 
       case 'napalm_drop': {
-        // Bomber plane flies over and drops napalm canisters
+        // Formation of 2 bombers drops napalm canisters
         let a = p < 0.15 ? p*7 : Math.max(0, 1-p);
-        // Bomber plane flying across
+        // Bomber formation flying across
         let bomberP = Math.min(1, p*2.5);
-        let bomberX = -40 + (game.mapW+80)*bomberP;
-        let bomberY = v.y - 80;
+        let bomberBaseX = -40 + (game.mapW+80)*bomberP;
+        let bomberBaseY = v.y - 80;
         if(bomberP < 1){
-          ctx.save(); ctx.translate(bomberX, bomberY);
-          // Engine smoke
-          let smokeA = a*0.15;
-          for(let s=0;s<3;s++){
-            ctx.beginPath(); ctx.arc(-25-s*12+Math.random()*3, Math.random()*4-2, 4+s*2, 0, Math.PI*2);
-            ctx.fillStyle = 'rgba(100,100,100,'+smokeA+')'; ctx.fill();
-          }
-          // Wings (wide bomber)
-          ctx.fillStyle = 'rgba(60,65,55,'+a+')';
-          ctx.beginPath(); ctx.moveTo(5,-3); ctx.lineTo(-8,-24); ctx.lineTo(-14,-23); ctx.lineTo(-8,-3); ctx.closePath(); ctx.fill();
-          ctx.beginPath(); ctx.moveTo(5,3); ctx.lineTo(-8,24); ctx.lineTo(-14,23); ctx.lineTo(-8,3); ctx.closePath(); ctx.fill();
-          // Fuselage (fat bomber body)
-          ctx.beginPath();
-          ctx.moveTo(22,0); ctx.lineTo(10,-5); ctx.lineTo(-8,-4.5); ctx.lineTo(-20,-3);
-          ctx.lineTo(-22,0); ctx.lineTo(-20,3); ctx.lineTo(-8,4.5); ctx.lineTo(10,5); ctx.closePath();
-          ctx.fillStyle = 'rgba(55,60,50,'+a+')'; ctx.fill();
-          ctx.strokeStyle = 'rgba(255,100,0,'+a*0.4+')'; ctx.lineWidth=0.6; ctx.stroke();
-          // Engine nacelles
-          ctx.fillStyle = 'rgba(50,50,45,'+a+')';
-          ctx.fillRect(-6,-17,8,4); ctx.fillRect(-6,13,8,4);
-          // Bomb bay doors (open)
-          ctx.strokeStyle = 'rgba(80,80,70,'+a+')'; ctx.lineWidth=0.5;
-          ctx.beginPath(); ctx.moveTo(-2,4.5); ctx.lineTo(-2,7); ctx.stroke();
-          ctx.beginPath(); ctx.moveTo(4,4.5); ctx.lineTo(4,7); ctx.stroke();
-          // Tail
-          ctx.beginPath(); ctx.moveTo(-18,-3); ctx.lineTo(-24,-10); ctx.lineTo(-26,-9); ctx.lineTo(-20,-3); ctx.closePath();
-          ctx.fillStyle = 'rgba(55,60,50,'+a+')'; ctx.fill();
-          // Cockpit
-          ctx.beginPath(); ctx.ellipse(14,0,5,3,0,0,Math.PI*2);
-          ctx.fillStyle = 'rgba(200,220,180,'+a*0.4+')'; ctx.fill();
-          ctx.restore();
-          // Falling napalm canisters
-          if(bomberP > 0.2){
-            let canP = (bomberP-0.2)/0.8;
-            for(let c=0;c<3;c++){
-              let cDelay = c*0.15;
-              if(canP > cDelay){
-                let cFall = Math.min(1,(canP-cDelay)/0.5);
-                let cx = bomberX - 30 - c*20;
-                let cy = bomberY + 10 + cFall*cFall*90;
-                if(cFall < 1){
-                  ctx.save(); ctx.translate(cx,cy); ctx.rotate(cFall*0.5);
-                  ctx.fillStyle = 'rgba(100,80,60,'+a+')';
-                  ctx.fillRect(-3,-6,6,12);
-                  ctx.fillStyle = 'rgba(255,80,0,'+a*0.5+')';
-                  ctx.fillRect(-2,6,4,3);
-                  ctx.restore();
+          // Draw 2 bombers in parallel formation
+          for(let bi=0; bi<2; bi++){
+            let bomberX = bomberBaseX + (bi===1 ? -35 : 0);
+            let bomberY = bomberBaseY + (bi===0 ? -18 : 18);
+            ctx.save(); ctx.translate(bomberX, bomberY);
+            // Engine smoke
+            let smokeA = a*0.15;
+            for(let s=0;s<3;s++){
+              ctx.beginPath(); ctx.arc(-25-s*12+Math.random()*3, Math.random()*4-2, 4+s*2, 0, Math.PI*2);
+              ctx.fillStyle = 'rgba(100,100,100,'+smokeA+')'; ctx.fill();
+            }
+            // Wings (wide bomber)
+            ctx.fillStyle = 'rgba(60,65,55,'+a+')';
+            ctx.beginPath(); ctx.moveTo(5,-3); ctx.lineTo(-8,-24); ctx.lineTo(-14,-23); ctx.lineTo(-8,-3); ctx.closePath(); ctx.fill();
+            ctx.beginPath(); ctx.moveTo(5,3); ctx.lineTo(-8,24); ctx.lineTo(-14,23); ctx.lineTo(-8,3); ctx.closePath(); ctx.fill();
+            // Fuselage (fat bomber body)
+            ctx.beginPath();
+            ctx.moveTo(22,0); ctx.lineTo(10,-5); ctx.lineTo(-8,-4.5); ctx.lineTo(-20,-3);
+            ctx.lineTo(-22,0); ctx.lineTo(-20,3); ctx.lineTo(-8,4.5); ctx.lineTo(10,5); ctx.closePath();
+            ctx.fillStyle = 'rgba(55,60,50,'+a+')'; ctx.fill();
+            ctx.strokeStyle = 'rgba(255,100,0,'+a*0.4+')'; ctx.lineWidth=0.6; ctx.stroke();
+            // Engine nacelles
+            ctx.fillStyle = 'rgba(50,50,45,'+a+')';
+            ctx.fillRect(-6,-17,8,4); ctx.fillRect(-6,13,8,4);
+            // Bomb bay doors (open)
+            ctx.strokeStyle = 'rgba(80,80,70,'+a+')'; ctx.lineWidth=0.5;
+            ctx.beginPath(); ctx.moveTo(-2,4.5); ctx.lineTo(-2,7); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(4,4.5); ctx.lineTo(4,7); ctx.stroke();
+            // Tail
+            ctx.beginPath(); ctx.moveTo(-18,-3); ctx.lineTo(-24,-10); ctx.lineTo(-26,-9); ctx.lineTo(-20,-3); ctx.closePath();
+            ctx.fillStyle = 'rgba(55,60,50,'+a+')'; ctx.fill();
+            // Cockpit
+            ctx.beginPath(); ctx.ellipse(14,0,5,3,0,0,Math.PI*2);
+            ctx.fillStyle = 'rgba(200,220,180,'+a*0.4+')'; ctx.fill();
+            ctx.restore();
+            // Falling napalm canisters (4 per bomber, tumbling)
+            if(bomberP > 0.2){
+              let canP = (bomberP-0.2)/0.8;
+              for(let c=0;c<4;c++){
+                let cDelay = c*0.12;
+                if(canP > cDelay){
+                  let cFall = Math.min(1,(canP-cDelay)/0.5);
+                  let cx = bomberX - 25 - c*16;
+                  let cy = bomberY + 10 + cFall*cFall*90;
+                  if(cFall < 1){
+                    // Tumbling rotation
+                    let tumble = cFall * (4 + c*0.8);
+                    ctx.save(); ctx.translate(cx,cy); ctx.rotate(tumble);
+                    ctx.fillStyle = 'rgba(100,80,60,'+a+')';
+                    ctx.fillRect(-3,-6,6,12);
+                    // Canister end caps
+                    ctx.fillStyle = 'rgba(80,65,45,'+a+')';
+                    ctx.fillRect(-4,-7,8,2); ctx.fillRect(-4,5,8,2);
+                    ctx.fillStyle = 'rgba(255,80,0,'+a*0.5+')';
+                    ctx.fillRect(-2,6,4,3);
+                    ctx.restore();
+                  }
                 }
               }
             }
           }
         }
-        // Fire columns on ground
-        for(let i=0;i<8;i++){
-          let fa = Math.PI*2/8*i + now/500;
-          let fr = (v.radius||60) * (0.3 + p*0.6);
+        // Bigger ground fire with animated licking flames
+        let fireR = (v.radius||60);
+        for(let i=0;i<12;i++){
+          let fa = Math.PI*2/12*i + now/500;
+          let fr = fireR * (0.3 + p*0.6);
           let fx = v.x + Math.cos(fa)*fr;
           let fy = v.y + Math.sin(fa)*fr;
-          let fh = 15 + Math.sin(now/200+i)*8;
+          // Taller licking flames
+          let fh = 22 + Math.sin(now/120+i*1.3)*12 + Math.sin(now/80+i*2.1)*6;
           let fg = ctx.createLinearGradient(fx, fy, fx, fy-fh);
-          fg.addColorStop(0,'rgba(255,100,0,'+a*0.6+')');
-          fg.addColorStop(0.5,'rgba(255,50,0,'+a*0.3+')');
+          fg.addColorStop(0,'rgba(255,200,50,'+a*0.7+')');
+          fg.addColorStop(0.2,'rgba(255,120,0,'+a*0.6+')');
+          fg.addColorStop(0.5,'rgba(255,50,0,'+a*0.35+')');
+          fg.addColorStop(0.8,'rgba(180,20,0,'+a*0.15+')');
           fg.addColorStop(1,'transparent');
           ctx.fillStyle = fg;
-          ctx.fillRect(fx-4, fy-fh, 8, fh);
+          // Flame shape (wavy)
+          let waveX = Math.sin(now/100+i)*3;
+          ctx.beginPath();
+          ctx.moveTo(fx-5, fy);
+          ctx.quadraticCurveTo(fx-3+waveX, fy-fh*0.5, fx+waveX, fy-fh);
+          ctx.quadraticCurveTo(fx+3+waveX, fy-fh*0.5, fx+5, fy);
+          ctx.closePath(); ctx.fill();
+        }
+        // Black smoke columns rising
+        if(p > 0.3){
+          let smokeIntensity = Math.min(1, (p-0.3)/0.3);
+          for(let sc=0; sc<5; sc++){
+            let scAngle = Math.PI*2/5*sc + 0.5;
+            let scX = v.x + Math.cos(scAngle)*fireR*0.5;
+            let scBaseY = v.y + Math.sin(scAngle)*fireR*0.3;
+            for(let sp=0; sp<4; sp++){
+              let spY = scBaseY - sp*18 - (now/200+sc)%20;
+              let spR = 6 + sp*3 + Math.sin(now/150+sc+sp)*2;
+              let spA = a * smokeIntensity * (0.4 - sp*0.08);
+              ctx.fillStyle = 'rgba(30,25,20,'+Math.max(0,spA)+')';
+              ctx.beginPath(); ctx.arc(scX + Math.sin(now/300+sp*2)*4, spY, spR, 0, Math.PI*2); ctx.fill();
+            }
+          }
+        }
+        // Ember particles floating upward
+        if(p > 0.2){
+          let emberA = a * Math.min(1, (p-0.2)/0.2);
+          for(let em=0; em<15; em++){
+            let emAngle = Math.PI*2/15*em;
+            let emR = fireR * (0.2 + 0.6*Math.random());
+            let emX = v.x + Math.cos(emAngle + now/800)*emR + Math.sin(now/200+em*3)*5;
+            let emY = v.y + Math.sin(emAngle)*emR*0.4 - ((now/100+em*7)%60);
+            let emSize = 1 + Math.random()*1.5;
+            ctx.fillStyle = 'rgba(255,'+(150+Math.floor(Math.random()*100))+',0,'+emberA*0.6+')';
+            ctx.beginPath(); ctx.arc(emX, emY, emSize, 0, Math.PI*2); ctx.fill();
+          }
+        }
+        // Heat shimmer/distortion lines above fire zone
+        if(p > 0.25){
+          let shimA = a * Math.min(1, (p-0.25)/0.2) * 0.15;
+          ctx.strokeStyle = 'rgba(255,200,100,'+shimA+')'; ctx.lineWidth = 0.8;
+          for(let sh=0; sh<6; sh++){
+            let shX = v.x - fireR*0.6 + sh*(fireR*1.2/6);
+            let shBaseY = v.y - 20 - sh*5;
+            ctx.beginPath();
+            ctx.moveTo(shX, shBaseY);
+            for(let sw=0; sw<4; sw++){
+              let swY = shBaseY - sw*10;
+              let swX = shX + Math.sin(now/120 + sh + sw*2)*6;
+              ctx.lineTo(swX, swY);
+            }
+            ctx.stroke();
+          }
         }
         // Ground fire ring
         ctx.beginPath(); ctx.arc(v.x,v.y,v.radius||60,0,Math.PI*2);
@@ -1762,62 +2155,115 @@ function drawVFX(){
       case 'howitzer_impact': {
         // Massive howitzer fires from off-screen with visible recoil
         let a = p < 0.1 ? p*10 : Math.max(0, 1-p);
-        // Draw howitzer at left edge
-        let hwX = 30, hwY = game.mapH - 30;
-        let hwAngle = Math.atan2(v.y - hwY, v.x - hwX);
-        let recoil = p < 0.1 ? (0.1-p)*80 : 0;
-        let hwA = p < 0.7 ? 1 : Math.max(0,(1-p)*3.3);
-        ctx.save(); ctx.translate(hwX, hwY); ctx.rotate(hwAngle);
-        // Barrel (long, thick)
-        ctx.fillStyle = 'rgba(70,75,65,'+hwA+')';
-        ctx.fillRect(8-recoil,-5,40,10);
-        // Barrel reinforcement rings
-        ctx.strokeStyle = 'rgba(100,105,90,'+hwA+')'; ctx.lineWidth=1;
-        for(let i=0;i<3;i++){ let rx=15+i*10-recoil; ctx.beginPath(); ctx.moveTo(rx,-5); ctx.lineTo(rx,5); ctx.stroke(); }
-        // Muzzle
-        ctx.fillStyle = 'rgba(50,55,45,'+hwA+')';
-        ctx.fillRect(46-recoil,-6,6,12);
-        // Muzzle flash
-        if(p < 0.12){
-          let mfA = (0.12-p)*8.3;
-          let mfR = 20+Math.random()*8;
-          let mfg = ctx.createRadialGradient(52-recoil,0,0,52-recoil,0,mfR);
-          mfg.addColorStop(0,'rgba(255,250,180,'+mfA+')');
-          mfg.addColorStop(0.4,'rgba(255,180,50,'+mfA*0.6+')');
-          mfg.addColorStop(1,'transparent');
-          ctx.fillStyle = mfg; ctx.beginPath(); ctx.arc(52-recoil,0,mfR,0,Math.PI*2); ctx.fill();
-          // Smoke blast
-          for(let s=0;s<4;s++){
-            let sa = (Math.random()-0.5)*1.2;
-            let sd = 20+Math.random()*15;
-            ctx.beginPath(); ctx.arc(52-recoil+Math.cos(sa)*sd, Math.sin(sa)*sd, 5+Math.random()*4, 0, Math.PI*2);
-            ctx.fillStyle = 'rgba(150,140,120,'+mfA*0.3+')'; ctx.fill();
+
+        // --- Helper to draw howitzer at a position ---
+        function drawHowitzer(hx, hy, targetX, targetY, hAlpha, progress) {
+          let hAngle = Math.atan2(targetY - hy, targetX - hx);
+          let rec = progress < 0.1 ? (0.1-progress)*80 : 0;
+          ctx.save(); ctx.translate(hx, hy); ctx.rotate(hAngle);
+          // Barrel
+          ctx.fillStyle = 'rgba(70,75,65,'+hAlpha+')';
+          ctx.fillRect(8-rec,-5,40,10);
+          ctx.strokeStyle = 'rgba(100,105,90,'+hAlpha+')'; ctx.lineWidth=1;
+          for(let i=0;i<3;i++){ let rx=15+i*10-rec; ctx.beginPath(); ctx.moveTo(rx,-5); ctx.lineTo(rx,5); ctx.stroke(); }
+          ctx.fillStyle = 'rgba(50,55,45,'+hAlpha+')';
+          ctx.fillRect(46-rec,-6,6,12);
+          // Muzzle flash
+          if(progress < 0.12){
+            let mfA = (0.12-progress)*8.3;
+            let mfR = 20+Math.random()*8;
+            let mfg = ctx.createRadialGradient(52-rec,0,0,52-rec,0,mfR);
+            mfg.addColorStop(0,'rgba(255,250,180,'+mfA+')');
+            mfg.addColorStop(0.4,'rgba(255,180,50,'+mfA*0.6+')');
+            mfg.addColorStop(1,'transparent');
+            ctx.fillStyle = mfg; ctx.beginPath(); ctx.arc(52-rec,0,mfR,0,Math.PI*2); ctx.fill();
+            for(let s=0;s<4;s++){
+              let sa = (Math.random()-0.5)*1.2;
+              let sd = 20+Math.random()*15;
+              ctx.beginPath(); ctx.arc(52-rec+Math.cos(sa)*sd, Math.sin(sa)*sd, 5+Math.random()*4, 0, Math.PI*2);
+              ctx.fillStyle = 'rgba(150,140,120,'+mfA*0.3+')'; ctx.fill();
+            }
           }
+          // Shell casing ejecting after firing
+          if(progress > 0.08 && progress < 0.3){
+            let casingP = (progress-0.08)/0.22;
+            let casingX = -5 - casingP*15;
+            let casingY = -8 - casingP*20 + casingP*casingP*12;
+            let casingA = hAlpha * Math.max(0, 1 - casingP*1.5);
+            ctx.save(); ctx.translate(casingX, casingY); ctx.rotate(-casingP*2.5);
+            ctx.fillStyle = 'rgba(200,180,80,'+casingA+')';
+            ctx.fillRect(-2,-5,4,10);
+            ctx.fillStyle = 'rgba(180,160,60,'+casingA*0.8+')';
+            ctx.fillRect(-2,4,4,2);
+            ctx.restore();
+          }
+          ctx.restore();
+          // Base/platform
+          ctx.fillStyle = 'rgba(60,65,55,'+hAlpha+')';
+          ctx.fillRect(hx-15, hy+2, 30, 6);
+          // Wheels
+          ctx.beginPath(); ctx.arc(hx-10, hy+8, 7, 0, Math.PI*2);
+          ctx.fillStyle = 'rgba(40,40,35,'+hAlpha+')'; ctx.fill();
+          ctx.strokeStyle = 'rgba(70,70,60,'+hAlpha+')'; ctx.lineWidth=1; ctx.stroke();
+          ctx.beginPath(); ctx.arc(hx+10, hy+8, 7, 0, Math.PI*2); ctx.fill(); ctx.stroke();
         }
-        ctx.restore();
-        // Howitzer base/platform
-        ctx.fillStyle = 'rgba(60,65,55,'+hwA+')';
-        ctx.fillRect(hwX-15, hwY+2, 30, 6);
-        // Wheels
-        ctx.beginPath(); ctx.arc(hwX-10, hwY+8, 7, 0, Math.PI*2);
-        ctx.fillStyle = 'rgba(40,40,35,'+hwA+')'; ctx.fill();
-        ctx.strokeStyle = 'rgba(70,70,60,'+hwA+')'; ctx.lineWidth=1; ctx.stroke();
-        ctx.beginPath(); ctx.arc(hwX+10, hwY+8, 7, 0, Math.PI*2); ctx.fill(); ctx.stroke();
-        // Shell trajectory (fast arc)
+
+        // --- Howitzer 1 (left edge, original) ---
+        let hwX = 30, hwY = game.mapH - 30;
+        let hwA = p < 0.7 ? 1 : Math.max(0,(1-p)*3.3);
+        drawHowitzer(hwX, hwY, v.x, v.y, hwA, p);
+
+        // --- Howitzer 2 (top-right, fires delayed) ---
+        let hw2X = game.mapW - 50, hw2Y = 40;
+        let hw2Delay = 0.12;
+        let hw2P = Math.max(0, p - hw2Delay);
+        let hw2A = hw2P < 0.01 ? 0 : (hw2P < 0.7 ? 1 : Math.max(0,(1-hw2P)*3.3));
+        if(p > hw2Delay*0.5){
+          drawHowitzer(hw2X, hw2Y, v.x, v.y, hw2A, hw2P);
+        }
+
+        // Shell trajectory from howitzer 1 (fast arc)
         if(p < 0.3){
           let sp = p/0.3;
           let sx = hwX + (v.x-hwX)*sp;
           let sy = hwY + (v.y-hwY)*sp - 80*Math.sin(sp*Math.PI);
           ctx.beginPath(); ctx.arc(sx,sy,4,0,Math.PI*2);
           ctx.fillStyle = 'rgba(255,220,120,'+a+')'; ctx.fill();
-          // Trail
           ctx.beginPath(); ctx.moveTo(hwX,hwY); ctx.quadraticCurveTo(sx,sy-40,sx,sy);
           ctx.strokeStyle = 'rgba(255,200,100,'+a*0.2+')'; ctx.lineWidth=2; ctx.stroke();
         }
+
+        // Shell trajectory from howitzer 2 (delayed)
+        if(hw2P > 0 && hw2P < 0.3){
+          let sp2 = hw2P/0.3;
+          let sx2 = hw2X + (v.x-hw2X)*sp2;
+          let sy2 = hw2Y + (v.y-hw2Y)*sp2 - 80*Math.sin(sp2*Math.PI);
+          ctx.beginPath(); ctx.arc(sx2,sy2,4,0,Math.PI*2);
+          ctx.fillStyle = 'rgba(255,220,120,'+hw2A+')'; ctx.fill();
+          ctx.beginPath(); ctx.moveTo(hw2X,hw2Y); ctx.quadraticCurveTo(sx2,sy2-40,sx2,sy2);
+          ctx.strokeStyle = 'rgba(255,200,100,'+hw2A*0.2+')'; ctx.lineWidth=2; ctx.stroke();
+        }
+
         let r = 20 + p*80;
+
+        // Concentric pressure waves (multiple fast-expanding thin rings)
+        if(p > 0.05 && p < 0.6){
+          for(let pw=0; pw<4; pw++){
+            let pwDelay = pw*0.06;
+            let pwP = Math.max(0, (p-0.05-pwDelay)/0.4);
+            if(pwP > 0 && pwP < 1){
+              let pwR = 15 + pwP*r*2;
+              let pwA = Math.max(0, 1 - pwP*1.5) * 0.5;
+              ctx.beginPath(); ctx.arc(v.x, v.y, pwR, 0, Math.PI*2);
+              ctx.strokeStyle = 'rgba(255,200,100,'+pwA+')'; ctx.lineWidth = 1.5; ctx.stroke();
+            }
+          }
+        }
+
         // Shockwave ring
         ctx.beginPath(); ctx.arc(v.x,v.y,r*1.5,0,Math.PI*2);
         ctx.strokeStyle = 'rgba(255,150,0,'+a*0.7+')'; ctx.lineWidth = 4; ctx.stroke();
+
         // Inner fireball
         let fg = ctx.createRadialGradient(v.x,v.y,0,v.x,v.y,r);
         fg.addColorStop(0,'rgba(255,255,200,'+a+')');
@@ -1826,6 +2272,59 @@ function drawVFX(){
         fg.addColorStop(1,'transparent');
         ctx.fillStyle = fg;
         ctx.beginPath(); ctx.arc(v.x,v.y,r,0,Math.PI*2); ctx.fill();
+
+        // Massive smoke cloud at impact
+        if(p > 0.15 && p < 0.85){
+          let smokeP = (p-0.15)/0.7;
+          let smokeA = Math.max(0, 1 - smokeP*1.3) * 0.4;
+          for(let s=0; s<10; s++){
+            let sAngle = Math.PI*2/10*s + s*0.6;
+            let sR = r*0.5 + smokeP*40 + Math.sin(s*2.1)*8;
+            let sx = v.x + Math.cos(sAngle)*sR*0.7;
+            let sy = v.y + Math.sin(sAngle)*sR*0.4 - smokeP*25;
+            let sSize = 10 + smokeP*18;
+            ctx.beginPath(); ctx.arc(sx, sy, sSize, 0, Math.PI*2);
+            ctx.fillStyle = 'rgba(80,75,65,'+smokeA+')'; ctx.fill();
+          }
+        }
+
+        // Flying rubble pieces from explosion
+        if(p > 0.08 && p < 0.65){
+          let rubP = (p-0.08)/0.57;
+          for(let rb=0; rb<14; rb++){
+            let rbAngle = Math.PI*2/14*rb + rb*0.9;
+            let rbSpeed = 50 + rb*10;
+            let rbx = v.x + Math.cos(rbAngle)*rbSpeed*rubP;
+            let rby = v.y + Math.sin(rbAngle)*rbSpeed*rubP - 70*rubP*(1-rubP);
+            let rbA = Math.max(0, 1 - rubP*1.7);
+            let rbSize = 2 + Math.random()*3;
+            ctx.save(); ctx.translate(rbx, rby); ctx.rotate(rubP*5 + rb);
+            ctx.fillStyle = 'rgba(100,90,70,'+rbA+')';
+            ctx.fillRect(-rbSize/2, -rbSize/2, rbSize, rbSize);
+            ctx.restore();
+          }
+        }
+
+        // Ground-level fire that lingers at the impact site
+        if(p > 0.2){
+          let fireA = Math.min(0.6, (p-0.2)*3) * Math.max(0, 1 - (p-0.6)*2.5);
+          if(fireA > 0){
+            for(let f=0; f<6; f++){
+              let fAngle = Math.PI*2/6*f + Math.sin(now/200+f)*0.5;
+              let fd = 8 + f*5;
+              let fx = v.x + Math.cos(fAngle)*fd;
+              let fy = v.y + Math.sin(fAngle)*fd*0.5;
+              let fh = 10 + Math.sin(now/150+f*1.3)*5;
+              let ffg = ctx.createLinearGradient(fx, fy, fx, fy-fh);
+              ffg.addColorStop(0,'rgba(255,120,0,'+fireA+')');
+              ffg.addColorStop(0.5,'rgba(255,60,0,'+fireA*0.5+')');
+              ffg.addColorStop(1,'transparent');
+              ctx.fillStyle = ffg;
+              ctx.fillRect(fx-3, fy-fh, 6, fh);
+            }
+          }
+        }
+
         if(p < 0.2){
           let shake = (0.2-p)*30;
           ctx.translate(Math.sin(now*0.1)*shake, Math.cos(now*0.13)*shake);
@@ -1833,7 +2332,7 @@ function drawVFX(){
       } break;
 
       case 'cluster_bomb': {
-        // Cargo plane drops cluster munitions
+        // Cargo plane drops cluster munitions with parachute bombs
         let a = Math.max(0, 1-p);
         let i = v.index || 0;
         // Cargo plane flies overhead (only drawn for first cluster index)
@@ -1865,24 +2364,93 @@ function drawVFX(){
             ctx.fillStyle = 'rgba(60,60,55,'+a*0.8+')';
             ctx.beginPath(); ctx.moveTo(-22,3); ctx.lineTo(-26,8); ctx.lineTo(-18,7); ctx.lineTo(-16,3); ctx.closePath(); ctx.fill();
             ctx.restore();
+            // Visible parachute bombs falling from cargo ramp
+            if(planeP > 0.15 && planeP < 0.7){
+              let dropP = (planeP - 0.15) / 0.55;
+              for(let pb=0; pb<4; pb++){
+                let pbDelay = pb * 0.18;
+                if(dropP > pbDelay){
+                  let pbFall = Math.min(1, (dropP - pbDelay) / 0.6);
+                  let pbX = planeX + 22 + pb*8; // from cargo ramp (flipped)
+                  let pbY = planeY + 8 + pbFall*pbFall*70;
+                  let pbA2 = a * (1 - pbFall*0.5);
+                  if(pbFall < 1){
+                    ctx.save(); ctx.translate(pbX, pbY);
+                    // Bomblet body
+                    ctx.fillStyle = 'rgba(90,95,80,'+pbA2+')';
+                    ctx.fillRect(-2,-4,4,8);
+                    // Parachute (arc shape above)
+                    let chuteOpen = Math.min(1, pbFall*3);
+                    let chuteR = 8 * chuteOpen;
+                    ctx.strokeStyle = 'rgba(200,190,170,'+pbA2*0.8+')'; ctx.lineWidth = 0.8;
+                    ctx.beginPath(); ctx.arc(0, -4-chuteR*0.6, chuteR, Math.PI, 0); ctx.stroke();
+                    // Parachute canopy fill
+                    ctx.fillStyle = 'rgba(220,210,190,'+pbA2*0.3+')';
+                    ctx.beginPath(); ctx.arc(0, -4-chuteR*0.6, chuteR, Math.PI, 0); ctx.closePath(); ctx.fill();
+                    // Suspension lines
+                    ctx.strokeStyle = 'rgba(160,150,130,'+pbA2*0.5+')'; ctx.lineWidth = 0.4;
+                    ctx.beginPath(); ctx.moveTo(-2,-4); ctx.lineTo(-chuteR, -4-chuteR*0.6); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(2,-4); ctx.lineTo(chuteR, -4-chuteR*0.6); ctx.stroke();
+                    ctx.restore();
+                  }
+                }
+              }
+            }
           }
         }
         let delay = i * 0.06;
         let localP = Math.max(0, (t-delay)/(v.duration-delay));
-        if(localP > 0){
-          let r = 10 + localP*35;
-          let la = Math.max(0, 1-localP*1.3);
+        // Cascading explosion timing (spreading pattern)
+        let cascadeDelay = (i % 3) * 0.04 + Math.floor(i/3) * 0.06;
+        let cascadeP = Math.max(0, localP - cascadeDelay);
+        if(cascadeP > 0){
+          let r = 10 + cascadeP*40;
+          let la = Math.max(0, 1-cascadeP*1.2);
           let eg = ctx.createRadialGradient(v.x,v.y,0,v.x,v.y,r);
           eg.addColorStop(0,'rgba(255,200,100,'+la+')');
           eg.addColorStop(0.5,'rgba(255,106,0,'+la*0.6+')');
           eg.addColorStop(1,'transparent');
           ctx.fillStyle = eg;
           ctx.beginPath(); ctx.arc(v.x,v.y,r,0,Math.PI*2); ctx.fill();
-          for(let j=0;j<4;j++){
-            let da = Math.PI*2/4*j + localP*3;
+          // 8 bomblets per cluster (with parachutes during descent)
+          for(let j=0;j<8;j++){
+            let da = Math.PI*2/8*j + cascadeP*3;
             let dd = r*0.8;
-            ctx.beginPath(); ctx.arc(v.x+Math.cos(da)*dd, v.y+Math.sin(da)*dd, 2, 0, Math.PI*2);
+            let bx2 = v.x+Math.cos(da)*dd, by2 = v.y+Math.sin(da)*dd;
+            // Bomblet with parachute (visible before explosion)
+            if(cascadeP < 0.3){
+              let bFall = cascadeP / 0.3;
+              let paraR = 4 * (1-bFall);
+              // Small parachute arc above bomblet
+              if(paraR > 0.5){
+                ctx.strokeStyle = 'rgba(200,190,170,'+la*0.6+')'; ctx.lineWidth = 0.6;
+                ctx.beginPath(); ctx.arc(bx2, by2-5-paraR*0.5, paraR, Math.PI, 0); ctx.stroke();
+                ctx.fillStyle = 'rgba(220,210,190,'+la*0.2+')';
+                ctx.beginPath(); ctx.arc(bx2, by2-5-paraR*0.5, paraR, Math.PI, 0); ctx.closePath(); ctx.fill();
+              }
+            }
+            ctx.beginPath(); ctx.arc(bx2, by2, 2.5, 0, Math.PI*2);
             ctx.fillStyle = 'rgba(255,150,0,'+la*0.8+')'; ctx.fill();
+          }
+          // Crater marks on ground after explosions
+          if(cascadeP > 0.4){
+            let craterA = la * 0.6;
+            let craterR = 8 + cascadeP*6;
+            // Dark crater
+            ctx.fillStyle = 'rgba(40,30,20,'+craterA+')';
+            ctx.beginPath(); ctx.arc(v.x, v.y, craterR, 0, Math.PI*2); ctx.fill();
+            // Crater rim (lighter ring)
+            ctx.beginPath(); ctx.arc(v.x, v.y, craterR*1.2, 0, Math.PI*2);
+            ctx.strokeStyle = 'rgba(80,60,40,'+craterA*0.5+')'; ctx.lineWidth = 2; ctx.stroke();
+            // Scorch marks radiating outward
+            for(let sc=0; sc<6; sc++){
+              let scA = Math.PI*2/6*sc;
+              let scLen = craterR*0.8;
+              ctx.beginPath();
+              ctx.moveTo(v.x + Math.cos(scA)*craterR, v.y + Math.sin(scA)*craterR);
+              ctx.lineTo(v.x + Math.cos(scA)*(craterR+scLen), v.y + Math.sin(scA)*(craterR+scLen));
+              ctx.strokeStyle = 'rgba(50,35,25,'+craterA*0.3+')'; ctx.lineWidth = 1.5; ctx.stroke();
+            }
           }
         }
       } break;
@@ -1981,16 +2549,67 @@ function drawVFX(){
       } break;
 
       case 'nuke': {
-        // ICBM missile descends then detonates
+        // B-2 stealth bomber delivers ICBM then detonates
         let a = p < 0.05 ? p*20 : Math.max(0, 1-p*0.9);
+
+        // --- B-2 Stealth Bomber + Escort Jets fly over and release ICBM ---
+        if(p < 0.25){
+          let flyP = p / 0.25;
+          let bx = -80 + (game.mapW + 160) * flyP;
+          let by = v.y - 120;
+          let ba = flyP < 0.1 ? flyP*10 : (flyP > 0.85 ? (1-flyP)*6.67 : 1);
+          // B-2 stealth bomber (black flying wing)
+          ctx.save(); ctx.translate(bx, by);
+          ctx.fillStyle = 'rgba(25,25,30,'+ba*0.95+')';
+          ctx.beginPath();
+          ctx.moveTo(28,0);
+          ctx.lineTo(8,-6); ctx.lineTo(-10,-32); ctx.lineTo(-18,-30); ctx.lineTo(-8,-8);
+          ctx.lineTo(-22,-4); ctx.lineTo(-24,0);
+          ctx.lineTo(-22,4); ctx.lineTo(-8,8);
+          ctx.lineTo(-18,30); ctx.lineTo(-10,32); ctx.lineTo(8,6);
+          ctx.closePath(); ctx.fill();
+          // Cockpit canopy
+          ctx.fillStyle = 'rgba(80,90,110,'+ba*0.6+')';
+          ctx.beginPath(); ctx.ellipse(18,0,6,2.5,0,0,Math.PI*2); ctx.fill();
+          // Engine glow
+          ctx.fillStyle = 'rgba(180,140,255,'+ba*0.3+')';
+          ctx.beginPath(); ctx.arc(-12,-8,3,0,Math.PI*2); ctx.fill();
+          ctx.beginPath(); ctx.arc(-12,8,3,0,Math.PI*2); ctx.fill();
+          ctx.restore();
+          // Escort fighter jets (2 flanking)
+          for(let ej=0; ej<2; ej++){
+            let ejY = by + (ej===0 ? -50 : 50);
+            let ejX = bx - 40;
+            ctx.save(); ctx.translate(ejX, ejY);
+            ctx.fillStyle = 'rgba(50,55,60,'+ba*0.9+')';
+            ctx.beginPath();
+            ctx.moveTo(12,0); ctx.lineTo(4,-2); ctx.lineTo(-6,-10); ctx.lineTo(-9,-9); ctx.lineTo(-4,-2.5);
+            ctx.lineTo(-10,-1.5); ctx.lineTo(-12,0);
+            ctx.lineTo(-10,1.5); ctx.lineTo(-4,2.5); ctx.lineTo(-9,9); ctx.lineTo(-6,10); ctx.lineTo(4,2);
+            ctx.closePath(); ctx.fill();
+            ctx.fillStyle = 'rgba(255,160,50,'+ba*0.4+')';
+            ctx.beginPath(); ctx.moveTo(-12,-1); ctx.lineTo(-16,0); ctx.lineTo(-12,1); ctx.fill();
+            ctx.restore();
+          }
+          // Missile release from bomber belly
+          if(flyP > 0.35 && flyP < 0.5){
+            let relP = (flyP - 0.35) / 0.15;
+            let rx = bx, ry = by + relP * 20;
+            ctx.save(); ctx.translate(rx, ry); ctx.rotate(relP * 0.3);
+            ctx.fillStyle = 'rgba(220,220,210,'+ba+')';
+            ctx.fillRect(-3,-10,6,20);
+            ctx.fillStyle = 'rgba(180,50,50,'+ba+')';
+            ctx.beginPath(); ctx.moveTo(0,-12); ctx.lineTo(-3,-6); ctx.lineTo(3,-6); ctx.closePath(); ctx.fill();
+            ctx.restore();
+          }
+        }
         // ICBM descending from sky
-        if(p < 0.2){
-          let missileP = p/0.2; // 0->1 during descent
+        if(p >= 0.08 && p < 0.2){
+          let missileP = (p-0.08)/0.12;
           let mx = v.x + (1-missileP)*60;
           let my = -30 + (v.y+30)*missileP;
           let mAngle = Math.PI*0.5 + 0.3*(1-missileP);
           ctx.save(); ctx.translate(mx, my); ctx.rotate(mAngle);
-          // Exhaust plume
           let exLen = 20+Math.sin(now/30)*5;
           let exg = ctx.createLinearGradient(0,16,0,16+exLen);
           exg.addColorStop(0,'rgba(255,200,80,0.8)');
@@ -1998,21 +2617,16 @@ function drawVFX(){
           exg.addColorStop(1,'transparent');
           ctx.fillStyle = exg;
           ctx.beginPath(); ctx.moveTo(-4,16); ctx.lineTo(0,16+exLen); ctx.lineTo(4,16); ctx.fill();
-          // Missile body (white ICBM)
           ctx.fillStyle = 'rgba(220,220,210,'+a+')';
           ctx.beginPath(); ctx.moveTo(0,-18); ctx.lineTo(-5,-8); ctx.lineTo(-5,14); ctx.lineTo(5,14); ctx.lineTo(5,-8); ctx.closePath(); ctx.fill();
-          // Nose cone
           ctx.fillStyle = 'rgba(180,50,50,'+a+')';
           ctx.beginPath(); ctx.moveTo(0,-18); ctx.lineTo(-4,-10); ctx.lineTo(4,-10); ctx.closePath(); ctx.fill();
-          // Fins
           ctx.fillStyle = 'rgba(180,180,170,'+a+')';
           ctx.beginPath(); ctx.moveTo(-5,10); ctx.lineTo(-10,16); ctx.lineTo(-5,16); ctx.closePath(); ctx.fill();
           ctx.beginPath(); ctx.moveTo(5,10); ctx.lineTo(10,16); ctx.lineTo(5,16); ctx.closePath(); ctx.fill();
-          // Warning stripe
           ctx.fillStyle = 'rgba(200,50,0,'+a*0.7+')';
           ctx.fillRect(-5,2,10,3);
           ctx.restore();
-          // Smoke trail
           ctx.beginPath();
           ctx.moveTo(v.x+60, -30);
           ctx.quadraticCurveTo(mx+10, my-40, mx, my);
@@ -2025,8 +2639,20 @@ function drawVFX(){
           ctx.fillStyle = 'rgba(255,255,255,'+(1-p*10)*0.6+')';
           ctx.beginPath(); ctx.arc(v.x,v.y,fr,0,Math.PI*2); ctx.fill();
         }
-        // Fireball
-        let fbr = (v.radius||120) * Math.min(1.2, p*4);
+        // Ground scorching effect (dark expanding circle)
+        if(p > 0.12){
+          let scorchP = Math.min(1, (p-0.12)/0.4);
+          let scorchR = (v.radius||120) * 1.8 * scorchP;
+          let scorchA = a * 0.5;
+          let sg = ctx.createRadialGradient(v.x,v.y,0,v.x,v.y,scorchR);
+          sg.addColorStop(0,'rgba(30,15,5,'+scorchA+')');
+          sg.addColorStop(0.6,'rgba(50,25,10,'+scorchA*0.6+')');
+          sg.addColorStop(1,'transparent');
+          ctx.fillStyle = sg;
+          ctx.beginPath(); ctx.arc(v.x,v.y,scorchR,0,Math.PI*2); ctx.fill();
+        }
+        // Fireball (bigger)
+        let fbr = (v.radius||120) * Math.min(1.5, p*5);
         let fg = ctx.createRadialGradient(v.x,v.y,0,v.x,v.y,fbr);
         fg.addColorStop(0,'rgba(255,255,200,'+a*0.7+')');
         fg.addColorStop(0.2,'rgba(255,200,50,'+a*0.5+')');
@@ -2035,24 +2661,62 @@ function drawVFX(){
         fg.addColorStop(1,'transparent');
         ctx.fillStyle = fg;
         ctx.beginPath(); ctx.arc(v.x,v.y,fbr,0,Math.PI*2); ctx.fill();
-        // Mushroom cloud stem
-        if(p > 0.15 && p < 0.8){
-          let stemA = a*0.4;
-          let stemH = fbr*1.5*Math.min(1,(p-0.15)*3);
-          let stemW = fbr*0.2;
+        // Mushroom cloud stem (bigger with rolling fire)
+        if(p > 0.15 && p < 0.85){
+          let stemA = a*0.5;
+          let stemH = fbr*2.0*Math.min(1,(p-0.15)*2.5);
+          let stemW = fbr*0.25;
           ctx.fillStyle = 'rgba(200,120,50,'+stemA+')';
           ctx.beginPath();
-          ctx.moveTo(v.x-stemW, v.y); ctx.lineTo(v.x-stemW*1.5, v.y-stemH);
-          ctx.lineTo(v.x+stemW*1.5, v.y-stemH); ctx.lineTo(v.x+stemW, v.y);
+          ctx.moveTo(v.x-stemW, v.y); ctx.lineTo(v.x-stemW*1.8, v.y-stemH);
+          ctx.lineTo(v.x+stemW*1.8, v.y-stemH); ctx.lineTo(v.x+stemW, v.y);
           ctx.closePath(); ctx.fill();
-          // Cap
-          let capR = fbr*0.6;
+          // Rolling fire inside stem
+          for(let rf=0; rf<5; rf++){
+            let rfY = v.y - stemH * (rf/5);
+            let rfW = stemW * (1.2 + 0.3*Math.sin(now/150 + rf*1.5));
+            let rfA = stemA * (0.4 + 0.2*Math.sin(now/100 + rf));
+            ctx.fillStyle = 'rgba(255,'+(140+rf*20)+',0,'+rfA+')';
+            ctx.beginPath(); ctx.ellipse(v.x, rfY, rfW, stemH*0.08, 0, 0, Math.PI*2); ctx.fill();
+          }
+          // Bigger mushroom cap with rolling fire
+          let capR = fbr*0.9;
           let capG = ctx.createRadialGradient(v.x,v.y-stemH,0,v.x,v.y-stemH,capR);
-          capG.addColorStop(0,'rgba(255,180,80,'+stemA+')');
-          capG.addColorStop(0.6,'rgba(200,80,30,'+stemA*0.6+')');
+          capG.addColorStop(0,'rgba(255,200,100,'+stemA+')');
+          capG.addColorStop(0.3,'rgba(255,150,50,'+stemA*0.8+')');
+          capG.addColorStop(0.6,'rgba(200,80,30,'+stemA*0.5+')');
+          capG.addColorStop(0.85,'rgba(120,40,10,'+stemA*0.3+')');
           capG.addColorStop(1,'transparent');
           ctx.fillStyle = capG;
           ctx.beginPath(); ctx.arc(v.x,v.y-stemH,capR,0,Math.PI*2); ctx.fill();
+          // Rolling fire bumps on cap edge
+          for(let cb=0; cb<10; cb++){
+            let cbA2 = Math.PI + Math.PI/10*cb - Math.PI/2;
+            let cbDist = capR * (0.85 + 0.15*Math.sin(now/120 + cb*2));
+            let cbX = v.x + Math.cos(cbA2)*cbDist;
+            let cbY = (v.y-stemH) + Math.sin(cbA2)*cbDist*0.5;
+            let cbR2 = capR*0.18 + Math.sin(now/80+cb)*capR*0.05;
+            ctx.fillStyle = 'rgba(255,130,30,'+stemA*0.4+')';
+            ctx.beginPath(); ctx.arc(cbX, cbY, cbR2, 0, Math.PI*2); ctx.fill();
+          }
+          // Secondary cap layer (upper)
+          let cap2R = capR*0.5;
+          let cap2G = ctx.createRadialGradient(v.x,v.y-stemH-capR*0.4,0,v.x,v.y-stemH-capR*0.4,cap2R);
+          cap2G.addColorStop(0,'rgba(255,180,80,'+stemA*0.6+')');
+          cap2G.addColorStop(0.5,'rgba(220,100,30,'+stemA*0.3+')');
+          cap2G.addColorStop(1,'transparent');
+          ctx.fillStyle = cap2G;
+          ctx.beginPath(); ctx.arc(v.x,v.y-stemH-capR*0.4,cap2R,0,Math.PI*2); ctx.fill();
+        }
+        // EMP ring (expands very fast)
+        if(p > 0.1 && p < 0.5){
+          let empP = (p-0.1)/0.4;
+          let empR = (v.radius||120) * 4 * empP;
+          let empA = (1-empP) * 0.6;
+          ctx.beginPath(); ctx.arc(v.x,v.y,empR,0,Math.PI*2);
+          ctx.strokeStyle = 'rgba(100,180,255,'+empA+')'; ctx.lineWidth = 2+3*(1-empP); ctx.stroke();
+          ctx.beginPath(); ctx.arc(v.x,v.y,empR*0.98,0,Math.PI*2);
+          ctx.strokeStyle = 'rgba(200,230,255,'+empA*0.4+')'; ctx.lineWidth = 1; ctx.stroke();
         }
         // Shockwave rings
         for(let i=0;i<3;i++){
@@ -2060,6 +2724,23 @@ function drawVFX(){
           let sa = a * (0.5-i*0.15);
           ctx.beginPath(); ctx.arc(v.x,v.y,sr,0,Math.PI*2);
           ctx.strokeStyle = 'rgba(255,100,0,'+Math.max(0,sa)+')'; ctx.lineWidth = 3-i; ctx.stroke();
+        }
+        // Flying debris pieces thrown outward
+        if(p > 0.1 && p < 0.7){
+          let debP = (p-0.1)/0.6;
+          for(let d=0; d<16; d++){
+            let dAngle = Math.PI*2/16*d + d*0.7;
+            let dSpeed = 0.6 + (d%3)*0.3;
+            let dDist = (v.radius||120) * 2.5 * debP * dSpeed;
+            let dx = v.x + Math.cos(dAngle)*dDist;
+            let dy = v.y + Math.sin(dAngle)*dDist + debP*debP*40;
+            let dA = a * (1-debP);
+            let dRot = debP * 8 + d;
+            ctx.save(); ctx.translate(dx, dy); ctx.rotate(dRot);
+            ctx.fillStyle = 'rgba('+(120+d*8)+','+(80+d*5)+','+(40+d*3)+','+dA+')';
+            ctx.fillRect(-3,-2, 5+d%3, 3+d%2);
+            ctx.restore();
+          }
         }
         // Radiation symbol
         if(p > 0.3){
