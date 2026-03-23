@@ -537,6 +537,7 @@ html, body { width:100%; height:100%; overflow:hidden; background:var(--bg-dark)
       <div id="hud-right">
         <span id="enemies-left">HOSTILES: 0</span>
         <span id="score-display">SCORE: 0</span>
+        <span id="sound-toggle-btn" onclick="toggleSound()" style="cursor:pointer; padding:0.2rem 0.6rem; border:1px solid rgba(0,240,255,0.4); border-radius:3px; font-size:0.7rem; letter-spacing:0.1em; color:var(--neon-cyan); user-select:none;">SFX ON</span>
       </div>
     </div>
     <div id="skill-bar"></div>
@@ -646,6 +647,255 @@ html, body { width:100%; height:100%; overflow:hidden; background:var(--bg-dark)
   <div id="upgrade-screen"></div>
 </div>
 <script>
+// ============================================================
+// SOUND SYSTEM (Web Audio API - Synthesized)
+// ============================================================
+let audioCtx = null;
+let soundEnabled = true;
+let soundMasterVolume = 0.3;
+let lastShootSoundTime = 0;
+
+function initAudio(){
+  if(audioCtx) return;
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+}
+
+function createNoiseBuffer(duration){
+  let sampleRate = audioCtx.sampleRate;
+  let length = sampleRate * duration;
+  let buffer = audioCtx.createBuffer(1, length, sampleRate);
+  let data = buffer.getChannelData(0);
+  for(let i=0; i<length; i++) data[i] = Math.random()*2-1;
+  return buffer;
+}
+
+function playSound(type){
+  if(!soundEnabled || !audioCtx) return;
+  let now = audioCtx.currentTime;
+  let master = audioCtx.createGain();
+  master.gain.value = soundMasterVolume;
+  master.connect(audioCtx.destination);
+
+  switch(type){
+    case 'shoot': {
+      if(now - lastShootSoundTime < 0.1) return;
+      lastShootSoundTime = now;
+      let osc = audioCtx.createOscillator();
+      let g = audioCtx.createGain();
+      osc.type = 'square';
+      osc.frequency.value = 800;
+      g.gain.setValueAtTime(0.3, now);
+      g.gain.exponentialRampToValueAtTime(0.001, now+0.05);
+      osc.connect(g); g.connect(master);
+      osc.start(now); osc.stop(now+0.05);
+    } break;
+
+    case 'hit': {
+      let buf = createNoiseBuffer(0.08);
+      let src = audioCtx.createBufferSource();
+      src.buffer = buf;
+      let g = audioCtx.createGain();
+      g.gain.setValueAtTime(0.4, now);
+      g.gain.exponentialRampToValueAtTime(0.001, now+0.08);
+      let filt = audioCtx.createBiquadFilter();
+      filt.type = 'lowpass'; filt.frequency.value = 600;
+      src.connect(filt); filt.connect(g); g.connect(master);
+      src.start(now); src.stop(now+0.08);
+    } break;
+
+    case 'explosion': {
+      let osc = audioCtx.createOscillator();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(60, now);
+      osc.frequency.exponentialRampToValueAtTime(20, now+0.4);
+      let g1 = audioCtx.createGain();
+      g1.gain.setValueAtTime(0.5, now);
+      g1.gain.exponentialRampToValueAtTime(0.001, now+0.4);
+      osc.connect(g1); g1.connect(master);
+      osc.start(now); osc.stop(now+0.4);
+      let buf = createNoiseBuffer(0.4);
+      let src = audioCtx.createBufferSource();
+      src.buffer = buf;
+      let g2 = audioCtx.createGain();
+      g2.gain.setValueAtTime(0.3, now);
+      g2.gain.exponentialRampToValueAtTime(0.001, now+0.4);
+      let filt = audioCtx.createBiquadFilter();
+      filt.type = 'lowpass'; filt.frequency.value = 400;
+      src.connect(filt); filt.connect(g2); g2.connect(master);
+      src.start(now); src.stop(now+0.4);
+    } break;
+
+    case 'bigExplosion': {
+      let osc = audioCtx.createOscillator();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(40, now);
+      osc.frequency.exponentialRampToValueAtTime(15, now+0.8);
+      let g1 = audioCtx.createGain();
+      g1.gain.setValueAtTime(0.6, now);
+      g1.gain.exponentialRampToValueAtTime(0.001, now+0.8);
+      osc.connect(g1); g1.connect(master);
+      osc.start(now); osc.stop(now+0.8);
+      let buf = createNoiseBuffer(0.8);
+      let src = audioCtx.createBufferSource();
+      src.buffer = buf;
+      let g2 = audioCtx.createGain();
+      g2.gain.setValueAtTime(0.4, now);
+      g2.gain.exponentialRampToValueAtTime(0.001, now+0.8);
+      let filt = audioCtx.createBiquadFilter();
+      filt.type = 'lowpass';
+      filt.frequency.setValueAtTime(800, now);
+      filt.frequency.exponentialRampToValueAtTime(50, now+0.8);
+      src.connect(filt); filt.connect(g2); g2.connect(master);
+      src.start(now); src.stop(now+0.8);
+    } break;
+
+    case 'laser': {
+      let osc = audioCtx.createOscillator();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(1200, now);
+      osc.frequency.exponentialRampToValueAtTime(400, now+0.15);
+      let g = audioCtx.createGain();
+      g.gain.setValueAtTime(0.25, now);
+      g.gain.exponentialRampToValueAtTime(0.001, now+0.15);
+      osc.connect(g); g.connect(master);
+      osc.start(now); osc.stop(now+0.15);
+    } break;
+
+    case 'missile': {
+      let buf = createNoiseBuffer(0.3);
+      let src = audioCtx.createBufferSource();
+      src.buffer = buf;
+      let filt = audioCtx.createBiquadFilter();
+      filt.type = 'bandpass'; filt.Q.value = 5;
+      filt.frequency.setValueAtTime(500, now);
+      filt.frequency.exponentialRampToValueAtTime(3000, now+0.3);
+      let g = audioCtx.createGain();
+      g.gain.setValueAtTime(0.3, now);
+      g.gain.exponentialRampToValueAtTime(0.001, now+0.3);
+      src.connect(filt); filt.connect(g); g.connect(master);
+      src.start(now); src.stop(now+0.3);
+    } break;
+
+    case 'shield': {
+      let osc1 = audioCtx.createOscillator();
+      let osc2 = audioCtx.createOscillator();
+      osc1.type = 'sine'; osc2.type = 'sine';
+      osc1.frequency.value = 880; osc2.frequency.value = 886;
+      let g = audioCtx.createGain();
+      g.gain.setValueAtTime(0.2, now);
+      g.gain.linearRampToValueAtTime(0.3, now+0.05);
+      g.gain.exponentialRampToValueAtTime(0.001, now+0.3);
+      osc1.connect(g); osc2.connect(g); g.connect(master);
+      osc1.start(now); osc1.stop(now+0.3);
+      osc2.start(now); osc2.stop(now+0.3);
+    } break;
+
+    case 'coin': {
+      let osc = audioCtx.createOscillator();
+      osc.type = 'square';
+      let g = audioCtx.createGain();
+      osc.frequency.setValueAtTime(988, now);
+      osc.frequency.setValueAtTime(1319, now+0.07);
+      g.gain.setValueAtTime(0.25, now);
+      g.gain.setValueAtTime(0.25, now+0.07);
+      g.gain.exponentialRampToValueAtTime(0.001, now+0.15);
+      osc.connect(g); g.connect(master);
+      osc.start(now); osc.stop(now+0.15);
+    } break;
+
+    case 'waveStart': {
+      let osc = audioCtx.createOscillator();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(300, now);
+      osc.frequency.linearRampToValueAtTime(600, now+0.5);
+      let g = audioCtx.createGain();
+      g.gain.setValueAtTime(0.3, now);
+      g.gain.setValueAtTime(0.3, now+0.35);
+      g.gain.exponentialRampToValueAtTime(0.001, now+0.5);
+      osc.connect(g); g.connect(master);
+      osc.start(now); osc.stop(now+0.5);
+    } break;
+
+    case 'death': {
+      let osc = audioCtx.createOscillator();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(200, now);
+      osc.frequency.exponentialRampToValueAtTime(50, now+0.6);
+      let g = audioCtx.createGain();
+      g.gain.setValueAtTime(0.5, now);
+      g.gain.exponentialRampToValueAtTime(0.001, now+0.6);
+      osc.connect(g); g.connect(master);
+      osc.start(now); osc.stop(now+0.6);
+    } break;
+
+    case 'combo': {
+      let notes = [523, 659, 784];
+      for(let i=0; i<3; i++){
+        let osc = audioCtx.createOscillator();
+        osc.type = 'square';
+        osc.frequency.value = notes[i];
+        let g = audioCtx.createGain();
+        let t = now + i*0.065;
+        g.gain.setValueAtTime(0.001, t);
+        g.gain.linearRampToValueAtTime(0.25, t+0.01);
+        g.gain.exponentialRampToValueAtTime(0.001, t+0.065);
+        osc.connect(g); g.connect(master);
+        osc.start(t); osc.stop(t+0.065);
+      }
+    } break;
+
+    case 'skill': {
+      let freqs = [440, 554, 659];
+      for(let i=0; i<3; i++){
+        let osc = audioCtx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.value = freqs[i];
+        let g = audioCtx.createGain();
+        g.gain.setValueAtTime(0.001, now);
+        g.gain.linearRampToValueAtTime(0.2, now+0.05);
+        g.gain.exponentialRampToValueAtTime(0.001, now+0.4);
+        osc.connect(g); g.connect(master);
+        osc.start(now); osc.stop(now+0.4);
+      }
+    } break;
+
+    case 'nuke': {
+      let osc = audioCtx.createOscillator();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(20, now);
+      osc.frequency.linearRampToValueAtTime(15, now+1.2);
+      let g1 = audioCtx.createGain();
+      g1.gain.setValueAtTime(0.6, now);
+      g1.gain.setValueAtTime(0.6, now+0.3);
+      g1.gain.exponentialRampToValueAtTime(0.001, now+1.2);
+      osc.connect(g1); g1.connect(master);
+      osc.start(now); osc.stop(now+1.2);
+      let buf = createNoiseBuffer(1.2);
+      let src = audioCtx.createBufferSource();
+      src.buffer = buf;
+      let g2 = audioCtx.createGain();
+      g2.gain.setValueAtTime(0.5, now);
+      g2.gain.exponentialRampToValueAtTime(0.001, now+1.2);
+      let filt = audioCtx.createBiquadFilter();
+      filt.type = 'lowpass';
+      filt.frequency.setValueAtTime(1000, now);
+      filt.frequency.exponentialRampToValueAtTime(30, now+1.2);
+      src.connect(filt); filt.connect(g2); g2.connect(master);
+      src.start(now); src.stop(now+1.2);
+    } break;
+  }
+}
+
+function toggleSound(){
+  soundEnabled = !soundEnabled;
+  let btn = document.getElementById('sound-toggle-btn');
+  if(btn) btn.textContent = soundEnabled ? 'SFX ON' : 'SFX OFF';
+}
+
+// Initialize audio on first user interaction
+document.addEventListener('click', function(){ initAudio(); }, {once:true});
+document.addEventListener('keydown', function(){ initAudio(); }, {once:true});
+
 // ============================================================
 // SECTION 1: DATA DEFINITIONS
 // ============================================================
@@ -897,6 +1147,7 @@ function createGame(commanderId){
     skillBanner: null,
     skillBannerTimer: 0,
     vaultHitFlash: 0,
+    waveAnnounce: null,
     stocks: STOCK_DATA.map(s => ({
       id: s.id,
       name: s.name,
@@ -1108,12 +1359,13 @@ function damageEnemy(e, dmg){
     addParticles(e.x, e.y, '#ffffff', 4);
     addVFX('enemy_death_ring', e.x, e.y, {duration:0.6, color:e.color, radius:e.radius});
     addFloatingText(e.x, e.y, '+'+bounty+' CR', '#39ff14', 11);
+    playSound('hit');
     game.killCombo++;
     game.killComboTimer = 2.0;
     if(game.killCombo >= 3){
       addFloatingText(e.x, e.y - 20, game.killCombo + 'x COMBO!', '#ff2d7b', 14 + Math.min(game.killCombo, 10));
     }
-    if(game.killCombo === 5) addFloatingText(e.x, e.y-35, 'RAMPAGE!', '#ff6a00', 16);
+    if(game.killCombo === 5) { addFloatingText(e.x, e.y-35, 'RAMPAGE!', '#ff6a00', 16); playSound('combo'); }
     if(game.killCombo === 10) addFloatingText(e.x, e.y-35, 'UNSTOPPABLE!', '#b44aff', 18);
     if(game.killCombo === 20) addFloatingText(e.x, e.y-35, 'GODLIKE!', '#00f0ff', 22);
     if(e.type === 'boss' || e.type === 'juggernaut'){
@@ -1122,6 +1374,7 @@ function damageEnemy(e, dmg){
       addParticles(e.x, e.y, '#ffffff', 10);
       triggerShake(8, 0.4);
       addFloatingText(e.x, e.y-30, e.type==='juggernaut'?'JUGGERNAUT DOWN!':'BOSS KILLED!', '#ff2d7b', 20);
+      playSound('explosion');
     }
   }
 }
@@ -1197,6 +1450,7 @@ function updateTurrets(dt){
     } else {
       // projectile
       let angle = Math.atan2(target.y - t.y, target.x - t.x);
+      playSound('shoot');
       game.projectiles.push({
         x: t.x, y: t.y,
         vx: Math.cos(angle) * tData.projSpeed,
@@ -3221,6 +3475,7 @@ function updateTimers(dt){
   if(game.killComboTimer > 0){ game.killComboTimer -= dt; } else { game.killCombo = 0; }
   if(game.skillBannerTimer > 0) game.skillBannerTimer -= dt;
   if(game.vaultHitFlash > 0) game.vaultHitFlash -= dt;
+  if(game.waveAnnounce && game.waveAnnounce.timer > 0){ game.waveAnnounce.timer -= dt; if(game.waveAnnounce.timer <= 0) game.waveAnnounce = null; }
 }
 
 function spawnEnemies(dt){
@@ -3283,6 +3538,7 @@ function buyStock(stockId, amount){
   updateStockMarketUI();
   updateHUD();
   addFloatingText(game.vaultX, game.vaultY-30, '-'+totalCost+' CR ('+amount+'x '+s.id+')', s.color, 11);
+  playSound('coin');
 }
 
 function sellStock(stockId, amount){
@@ -3296,6 +3552,7 @@ function sellStock(stockId, amount){
   updateStockMarketUI();
   updateHUD();
   addFloatingText(game.vaultX, game.vaultY-30, '+'+totalGain+' CR ('+amount+'x '+s.id+')', '#39ff14', 11);
+  playSound('coin');
 }
 
 function toggleStockMarket(){
@@ -3398,6 +3655,7 @@ function gameLoop(timestamp){
 }
 
 function gameOver(){
+  playSound('death');
   game.running = false;
   document.getElementById('overlay').style.display = 'flex';
   document.getElementById('overlay-title').textContent = 'VAULT BREACHED';
@@ -3413,6 +3671,57 @@ function render(){
   // Background
   ctx.fillStyle = '#080e18';
   ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  // --- Starfield background with parallax and nebula ---
+  {
+    let _now = Date.now();
+    // Nebula glow (2-3 large semi-transparent circles)
+    let nebulae = [
+      { x:0.2, y:0.3, r:180, color:'rgba(80,20,120,0.045)' },
+      { x:0.75, y:0.65, r:220, color:'rgba(20,60,120,0.04)' },
+      { x:0.5, y:0.15, r:150, color:'rgba(120,30,60,0.035)' }
+    ];
+    for(let nb of nebulae){
+      let nx = nb.x * canvas.width + Math.sin(_now/12000 + nb.x*10)*20;
+      let ny = nb.y * canvas.height + Math.cos(_now/15000 + nb.y*10)*15;
+      let grad = ctx.createRadialGradient(nx,ny,0,nx,ny,nb.r);
+      grad.addColorStop(0, nb.color);
+      grad.addColorStop(1, 'transparent');
+      ctx.fillStyle = grad;
+      ctx.fillRect(nx-nb.r, ny-nb.r, nb.r*2, nb.r*2);
+    }
+    // Stars (40 fixed positions, seeded by index)
+    for(let i=0; i<40; i++){
+      let seed1 = Math.sin(i*127.1+311.7)*43758.5453;
+      let seed2 = Math.sin(i*269.5+183.3)*43758.5453;
+      let sx = ((seed1 - Math.floor(seed1)) + Math.sin(_now/20000+i*0.7)*0.01) * canvas.width;
+      let sy = ((seed2 - Math.floor(seed2)) + Math.cos(_now/25000+i*0.9)*0.01) * canvas.height;
+      sx = ((sx % canvas.width) + canvas.width) % canvas.width;
+      sy = ((sy % canvas.height) + canvas.height) % canvas.height;
+      let brightness = (Math.sin(i*73.1)*0.5+0.5);
+      let twinkle = Math.sin(_now/800 + i*2.7)*0.4 + 0.6;
+      let alpha = (0.15 + brightness*0.55) * twinkle;
+      let size = 0.5 + brightness * 1.5;
+      ctx.beginPath();
+      ctx.arc(sx, sy, size, 0, Math.PI*2);
+      if(brightness > 0.7){
+        ctx.fillStyle = 'rgba(200,220,255,' + alpha.toFixed(3) + ')';
+      } else if(brightness > 0.4){
+        ctx.fillStyle = 'rgba(180,200,240,' + (alpha*0.8).toFixed(3) + ')';
+      } else {
+        ctx.fillStyle = 'rgba(150,170,210,' + (alpha*0.6).toFixed(3) + ')';
+      }
+      ctx.fill();
+      // Bright stars get a glow
+      if(brightness > 0.75 && twinkle > 0.85){
+        ctx.beginPath();
+        ctx.arc(sx, sy, size*3, 0, Math.PI*2);
+        ctx.fillStyle = 'rgba(200,220,255,' + (alpha*0.15).toFixed(3) + ')';
+        ctx.fill();
+      }
+    }
+  }
+
   // Screen shake
   if(game.screenShake > 0){
     let s = game.screenShakeIntensity * (game.screenShake / 0.3);
@@ -4425,6 +4734,212 @@ function render(){
     ctx.fillRect(0, 0, canvas.width, canvas.height);
   }
 
+  // --- Enemy Warning Indicators (red arrows at top edge for spawn queue) ---
+  if(game.spawnQueue.length > 0){
+    let shown = {};
+    let maxWarnings = 8;
+    let count = 0;
+    for(let i=0; i<game.spawnQueue.length && count<maxWarnings; i++){
+      let e = game.spawnQueue[i];
+      // Snap to nearest edge position indicator
+      let wx = Math.max(20, Math.min(canvas.width-20, e.x));
+      let wy = 0;
+      // Determine which edge
+      if(e.y < 0) { wx = Math.max(20, Math.min(canvas.width-20, e.x)); wy = 0; }
+      else if(e.y > canvas.height) { wx = Math.max(20, Math.min(canvas.width-20, e.x)); wy = canvas.height; }
+      else if(e.x < 0) { wx = 0; wy = Math.max(20, Math.min(canvas.height-20, e.y)); }
+      else { wx = canvas.width; wy = Math.max(20, Math.min(canvas.height-20, e.y)); }
+      let key = Math.round(wx/30) + ',' + Math.round(wy/30);
+      if(shown[key]) continue;
+      shown[key] = true;
+      count++;
+      let pulse = Math.sin(Date.now()/200 + i)*0.3 + 0.7;
+      ctx.save();
+      ctx.translate(wx, wy);
+      // Rotate arrow to point inward
+      let angle = Math.atan2(canvas.height/2 - wy, canvas.width/2 - wx);
+      ctx.rotate(angle);
+      ctx.globalAlpha = 0.6 * pulse;
+      ctx.fillStyle = '#ff2d2d';
+      ctx.beginPath();
+      ctx.moveTo(12, 0);
+      ctx.lineTo(-6, -7);
+      ctx.lineTo(-6, 7);
+      ctx.closePath();
+      ctx.fill();
+      // Glow
+      ctx.shadowColor = '#ff0000';
+      ctx.shadowBlur = 8;
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.globalAlpha = 1;
+      ctx.restore();
+    }
+  }
+
+  // --- Canvas Wave Announcement Banner ---
+  if(game.waveAnnounce && game.waveAnnounce.timer > 0){
+    let wa = game.waveAnnounce;
+    let progress = 1 - wa.timer / wa.maxTimer;
+    let fadeIn = Math.min(1, progress * 4);
+    let fadeOut = Math.min(1, wa.timer / 0.5);
+    let alpha = Math.min(fadeIn, fadeOut);
+    let cy = canvas.height * 0.38;
+    // Flash effect at start
+    if(progress < 0.15){
+      let flashA = (1 - progress/0.15) * 0.25;
+      ctx.fillStyle = 'rgba(255,255,255,' + flashA.toFixed(3) + ')';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+    // Horizontal lines sweeping in
+    let lineExtend = Math.min(1, progress * 3);
+    ctx.globalAlpha = alpha * 0.6;
+    ctx.strokeStyle = '#00f0ff';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(canvas.width/2 - canvas.width*0.4*lineExtend, cy - 30);
+    ctx.lineTo(canvas.width/2, cy - 30);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(canvas.width/2 + canvas.width*0.4*lineExtend, cy - 30);
+    ctx.lineTo(canvas.width/2, cy - 30);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(canvas.width/2 - canvas.width*0.4*lineExtend, cy + 35);
+    ctx.lineTo(canvas.width/2, cy + 35);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(canvas.width/2 + canvas.width*0.4*lineExtend, cy + 35);
+    ctx.lineTo(canvas.width/2, cy + 35);
+    ctx.stroke();
+    // Background bar
+    ctx.fillStyle = 'rgba(8,14,24,0.7)';
+    ctx.globalAlpha = alpha * 0.8;
+    ctx.fillRect(0, cy - 28, canvas.width, 60);
+    // "WAVE X" text with glow
+    ctx.globalAlpha = alpha;
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 36px Orbitron, sans-serif';
+    ctx.shadowColor = '#00f0ff';
+    ctx.shadowBlur = 25;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText('WAVE ' + wa.wave, canvas.width/2, cy + 8);
+    ctx.shadowBlur = 15;
+    ctx.fillText('WAVE ' + wa.wave, canvas.width/2, cy + 8);
+    ctx.shadowBlur = 0;
+    // Subtitle
+    ctx.font = 'bold 14px Orbitron, sans-serif';
+    let subColor = wa.subtitle === 'BOSS WAVE' ? '#ff2d2d' : wa.subtitle === 'SWARM INCOMING' ? '#ffcc44' : '#00f0ff';
+    ctx.fillStyle = subColor;
+    ctx.shadowColor = subColor;
+    ctx.shadowBlur = 10;
+    ctx.fillText(wa.subtitle, canvas.width/2, cy + 28);
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1;
+    ctx.textAlign = 'start';
+  }
+
+  // --- Kill Streak Border Effects ---
+  if(game.killCombo >= 5){
+    let _now = Date.now();
+    let w = canvas.width, h = canvas.height;
+    if(game.killCombo >= 20){
+      // Golden glow on edges + streaming particles
+      let pulse = Math.sin(_now/200)*0.15 + 0.35;
+      let grad;
+      // Top
+      grad = ctx.createLinearGradient(0,0,0,40);
+      grad.addColorStop(0, 'rgba(255,215,0,' + pulse.toFixed(3) + ')');
+      grad.addColorStop(1, 'transparent');
+      ctx.fillStyle = grad; ctx.fillRect(0,0,w,40);
+      // Bottom
+      grad = ctx.createLinearGradient(0,h,0,h-40);
+      grad.addColorStop(0, 'rgba(255,215,0,' + pulse.toFixed(3) + ')');
+      grad.addColorStop(1, 'transparent');
+      ctx.fillStyle = grad; ctx.fillRect(0,h-40,w,40);
+      // Left
+      grad = ctx.createLinearGradient(0,0,40,0);
+      grad.addColorStop(0, 'rgba(255,215,0,' + pulse.toFixed(3) + ')');
+      grad.addColorStop(1, 'transparent');
+      ctx.fillStyle = grad; ctx.fillRect(0,0,40,h);
+      // Right
+      grad = ctx.createLinearGradient(w,0,w-40,0);
+      grad.addColorStop(0, 'rgba(255,215,0,' + pulse.toFixed(3) + ')');
+      grad.addColorStop(1, 'transparent');
+      ctx.fillStyle = grad; ctx.fillRect(w-40,0,40,h);
+      // Inward streaming particles
+      for(let i=0; i<12; i++){
+        let angle = (i/12)*Math.PI*2 + _now/2000;
+        let edgeDist = 10 + ((_now/30 + i*50) % 60);
+        let px = w/2 + Math.cos(angle)*(w/2 - edgeDist);
+        let py = h/2 + Math.sin(angle)*(h/2 - edgeDist);
+        let sz = 2 + Math.sin(_now/300+i)*1;
+        ctx.beginPath(); ctx.arc(px, py, sz, 0, Math.PI*2);
+        ctx.fillStyle = 'rgba(255,215,0,' + (0.4 + Math.sin(_now/200+i)*0.2).toFixed(3) + ')';
+        ctx.fill();
+      }
+    } else if(game.killCombo >= 10){
+      // Purple pulsing border
+      let pulse = Math.sin(_now/150)*0.2 + 0.3;
+      let bw = 4 + Math.sin(_now/200)*2;
+      ctx.strokeStyle = 'rgba(180,74,255,' + pulse.toFixed(3) + ')';
+      ctx.lineWidth = bw;
+      ctx.shadowColor = '#b44aff';
+      ctx.shadowBlur = 15;
+      ctx.strokeRect(bw/2, bw/2, w-bw, h-bw);
+      ctx.shadowBlur = 0;
+    } else {
+      // Orange fire ring (combo >= 5)
+      let pulse = Math.sin(_now/180)*0.15 + 0.25;
+      let grad;
+      // Top
+      grad = ctx.createLinearGradient(0,0,0,25);
+      grad.addColorStop(0, 'rgba(255,106,0,' + pulse.toFixed(3) + ')');
+      grad.addColorStop(1, 'transparent');
+      ctx.fillStyle = grad; ctx.fillRect(0,0,w,25);
+      // Bottom
+      grad = ctx.createLinearGradient(0,h,0,h-25);
+      grad.addColorStop(0, 'rgba(255,106,0,' + pulse.toFixed(3) + ')');
+      grad.addColorStop(1, 'transparent');
+      ctx.fillStyle = grad; ctx.fillRect(0,h-25,w,25);
+      // Left
+      grad = ctx.createLinearGradient(0,0,25,0);
+      grad.addColorStop(0, 'rgba(255,106,0,' + pulse.toFixed(3) + ')');
+      grad.addColorStop(1, 'transparent');
+      ctx.fillStyle = grad; ctx.fillRect(0,0,25,h);
+      // Right
+      grad = ctx.createLinearGradient(w,0,w-25,0);
+      grad.addColorStop(0, 'rgba(255,106,0,' + pulse.toFixed(3) + ')');
+      grad.addColorStop(1, 'transparent');
+      ctx.fillStyle = grad; ctx.fillRect(w-25,0,25,h);
+    }
+  }
+
+  // --- Turret Range Indicator on Hover ---
+  if(game.mouseX != null && !game.selectedTurret && !game.skillTargeting){
+    let _gs = game.gridSize;
+    let _fx = getUpgradeEffects();
+    for(let t of game.turrets){
+      let d = Math.sqrt((game.mouseX-t.x)**2 + (game.mouseY-t.y)**2);
+      if(d < _gs * 0.7){
+        let td = TURRET_DATA[t.type];
+        if(td){
+          let range = td.range * (1 + _fx.rangeMult);
+          ctx.beginPath();
+          ctx.arc(t.x, t.y, range, 0, Math.PI*2);
+          ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+          ctx.lineWidth = 1;
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.arc(t.x, t.y, range, 0, Math.PI*2);
+          ctx.fillStyle = 'rgba(255,255,255,0.02)';
+          ctx.fill();
+        }
+        break;
+      }
+    }
+  }
+
   // End screen shake
   if(game.screenShake > 0) ctx.restore();
 }
@@ -4537,6 +5052,7 @@ function activateSkill(num){
 }
 
 function executeSkill(num, tx, ty){
+  playSound('skill');
   let cmd = game.commander;
   let fx = getUpgradeEffects();
   let power = 1 + fx.skillMult;
@@ -4717,6 +5233,7 @@ function executeSkill(num, tx, ty){
         addParticles(tx,ty,'#ff2d7b',25);
         addVFX('nuke', tx, ty, {duration:3.5, radius:120*power});
         triggerShake(15, 0.7);
+        playSound('nuke');
       } break;
     case 'flux':
       if(num===1){ // deploy temp turret
@@ -4814,10 +5331,20 @@ function placeTurret(gx, gy){
 // ---- WAVES ----
 function sendNextWave(){
   if(!game || game.waveActive) return;
+  playSound('waveStart');
   game.wave++;
   game.waveActive = true;
   game.buildPhase = false;
   spawnWave(game.wave);
+  // Canvas wave announcement
+  {
+    let comp = WAVE_COMPOSITIONS[Math.min(game.wave-1, WAVE_COMPOSITIONS.length-1)];
+    let hasBoss = comp.some(g => g.type==='boss' || g.type==='juggernaut');
+    let hasSwarm = comp.some(g => g.type==='swarm' && g.count >= 15);
+    let totalCount = comp.reduce((s,g)=>s+g.count,0);
+    let subtitle = totalCount > 30 ? 'SWARM INCOMING' : hasBoss ? 'BOSS WAVE' : hasSwarm ? 'SWARM INCOMING' : 'PREPARE DEFENSES';
+    game.waveAnnounce = { timer: 2.5, maxTimer: 2.5, wave: game.wave, subtitle: subtitle };
+  }
   // announce
   let ann = document.getElementById('wave-announce');
   document.getElementById('announce-num').textContent = game.wave;
